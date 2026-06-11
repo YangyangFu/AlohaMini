@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(Aloha)
+project(aloha)
  
 # Default to C99
 if(NOT CMAKE_C_STANDARD)
@@ -34,7 +34,7 @@ endif()
  
  
 install(DIRECTORY
-  meshes urdf textures config launch rviz 
+  meshes urdf textures config launch rviz worlds
   DESTINATION share/${PROJECT_NAME}/
 )
 ament_package()

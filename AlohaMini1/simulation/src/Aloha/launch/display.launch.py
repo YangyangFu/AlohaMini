@@ -5,7 +5,7 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     # 获取包的目录
-    bringup_dir = get_package_share_directory('Aloha')
+    bringup_dir = get_package_share_directory('aloha')
     
     # URDF 文件路径
     urdf_path = os.path.join(bringup_dir, 'urdf', 'Aloha.urdf')
