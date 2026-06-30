@@ -50,6 +50,73 @@ Stop the simulation with `Ctrl+C`, then remove the stopped container:
 docker compose down
 ```
 
+## X11 Native Window
+
+As an alternative to the browser, `gazebo-x11` renders Gazebo into a real
+window on your host X server. It uses a separate, slimmer image
+(`Dockerfile.x11`, no VNC stack) and the shared `entrypoint.sh`.
+
+Software OpenGL stays on (`LIBGL_ALWAYS_SOFTWARE=1`): Mesa renders inside the
+container and ships finished images to the X server. This is the reliable path
+on macOS — XQuartz only offers indirect GLX, which modern Gazebo's OpenGL core
+profile cannot use, so forwarding raw GL calls would crash or render nothing.
+
+### macOS (XQuartz)
+
+1. Install XQuartz and log out/in (it registers an X server):
+
+   ```bash
+   brew install --cask xquartz
+   ```
+
+2. Launch XQuartz, open **Settings → Security**, tick **"Allow connections
+   from network clients"**, then quit and reopen XQuartz.
+
+3. Allow the local connection (run in a normal macOS terminal, with XQuartz
+   running):
+
+   ```bash
+   export DISPLAY=:0
+   xhost + 127.0.0.1
+   ```
+
+4. Start the service:
+
+   ```bash
+   docker compose --profile x11 up --build gazebo-x11
+   ```
+
+> **Known limitation — this does not work for Gazebo on macOS.** The container
+> connects to XQuartz and creates its window, but Gazebo's GUI then aborts when
+> it tries to create an OpenGL context: XQuartz only provides *indirect* GLX,
+> which Gazebo's Qt Quick + Ogre 3D engine cannot use. Observed failures include
+> `QSGRenderLoop::handleContextCreationFailure`, `glx: failed to create drisw
+> screen`, GLX `BadValue`, and a segfault in the 3D engine. `LIBGL_ALWAYS_SOFTWARE`
+> does not help, because the GL context must still come from the X server's GLX
+> (the container has no X server of its own — which is exactly what KasmVNC's
+> Xvnc provides, and why the browser path works).
+>
+> **On macOS, use the default KasmVNC `gazebo` service instead.** This `x11`
+> profile is intended for Linux hosts (below), where it works well — especially
+> with a GPU.
+
+### Linux
+
+On Linux the host X server uses a local socket, so override `DISPLAY` and mount
+the socket instead of using `host.docker.internal`:
+
+```bash
+xhost +local:docker
+DISPLAY="$DISPLAY" docker compose --profile x11 run --rm \
+  -e DISPLAY \
+  -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
+  gazebo-x11
+```
+
+On a Linux host with a GPU you can also drop `LIBGL_ALWAYS_SOFTWARE` for
+hardware-accelerated rendering (add `--gpus all` and the NVIDIA Container
+Toolkit for NVIDIA cards).
+
 ## Headless Mode
 
 For CI or physics-only testing:

@@ -13,6 +13,26 @@ services:
       LIBGL_ALWAYS_SOFTWARE: "1"
     shm_size: "8gb"
 
+  # Renders into a native window on the host X server instead of the browser.
+  # macOS: install XQuartz, enable "Allow connections from network clients",
+  # run `xhost + 127.0.0.1`, then `docker compose --profile x11 up --build gazebo-x11`.
+  # See the README "X11 Native Window" section for full setup and Linux notes.
+  gazebo-x11:
+    build:
+      context: .
+      dockerfile: Dockerfile.x11
+    image: alohamini1-gazebo-x11:jazzy
+    environment:
+      # macOS/Windows reach the host X server over TCP via host.docker.internal.
+      # This is hardcoded (NOT inherited from the host $DISPLAY) because the host
+      # uses :0 but the container must use host.docker.internal:0. On Linux,
+      # override with `-e DISPLAY` + an X socket mount (see README).
+      DISPLAY: "host.docker.internal:0"
+      # Software OpenGL avoids XQuartz indirect-GLX failures with modern Gazebo.
+      LIBGL_ALWAYS_SOFTWARE: "${LIBGL_ALWAYS_SOFTWARE:-1}"
+    shm_size: "8gb"
+    profiles: ["x11"]
+
   gazebo-headless:
     build:
       context: .
