@@ -101,31 +101,48 @@ class LeRobotAlohaMiniDataConfig(DataConfigFactory):
 
 ```
 TrainConfig(
-        name="pick_up_merged",
+        name="alohamini2pro",
         model=pi0_config.Pi0Config(pi05=True, action_horizon=10),
         data=LeRobotAlohaMiniDataConfig(
-            repo_id="/home/cenzl/VLA/lerobot_dataset_precessing/pick_up_merged",
-            default_prompt="pickup the rubbish",
-            robot_dof=16,  # set 18 for native 18-DoF robots
-            dataset_action_dim=16,
+            repo_id="/path/to/your/dataset_root",
+            base_config=DataConfig(prompt_from_task=True),
+            default_prompt="your job description",
+            robot_dof=18,
+            dataset_action_dim=18,
             use_delta_actions=True,
-            # Pi0.5 internal action space is always 18D.
+            repack_transforms=_transforms.Group(
+                inputs=[
+                    _transforms.RepackTransform(
+                        {
+                            "images": {
+                                "cam_high": "observation.images.chest",
+                                "cam_left_wrist": "observation.images.wrist_left",
+                                "cam_right_wrist": "observation.images.wrist_right",
+                            },
+                            "state": "observation.state",
+                            "actions": "action",
+                            "prompt": "prompt", # This parameter must be added, otherwise the model training will not include the task description
+                        }
+                    )
+                ]
+            ),
+            # AlohaMini2Pro is native 18D: arm joints are trained as deltas,
+            # grippers/base/lift stay absolute.
             delta_action_mask=[
                 True, True, True, True, True, True, False,
                 True, True, True, True, True, True, False,
                 False, False, False, False,
             ],
             assets=AssetsConfig(
-                assets_dir="/home/cenzl/VLA/lerobot_dataset_precessing/assets",
-                asset_id="pick_up_merged",
+                assets_dir="/path/to/your/asset/path",
+                asset_id="/dataset/file/name", # assets_dir and assed_id form your dataset path, the path is equivalent to repo_id
             ),
         ),
         weight_loader=weight_loaders.CheckpointWeightLoader(
-            "/home/cenzl/VLA/openpi/checkpoints/pi05_base/params",
+            "gs://openpi-assets/checkpoints/pi05_base/params",
         ),
-        pytorch_weight_path="/home/cenzl/VLA/openpi/checkpoints/pi05_base_pytorch",
-        num_train_steps=20000,
-        batch_size=8,
+        num_train_steps=50000,
+        batch_size=4,
         num_workers=2,
         wandb_enabled=False,
     ),
