@@ -4,7 +4,12 @@
 
 This workspace contains the AlohaMini1 mesh and URDF export plus a Docker
 environment for ROS 2 Jazzy and Gazebo Harmonic. Gazebo is displayed through
-noVNC, so the same workflow works on Linux, macOS, and Windows.
+KasmVNC in the browser, so the same workflow works on Linux, macOS, and
+Windows. KasmVNC replaces the older x11vnc + noVNC stack and gives noticeably
+sharper streaming. Note that 3D is still rendered with software OpenGL
+(`LIBGL_ALWAYS_SOFTWARE=1`) for portability — KasmVNC improves how the image is
+streamed, not how fast Gazebo renders. For hardware-accelerated rendering, run
+natively on a Linux machine with a GPU (see "Native ROS 2 Use").
 
 ## Requirements
 
@@ -22,7 +27,15 @@ docker compose up --build gazebo
 
 When the log reports that the server is listening, open:
 
-<http://localhost:6080/vnc.html?autoconnect=true&resize=scale>
+<http://localhost:6080>
+
+Log in with the default KasmVNC credentials:
+
+- User: `kasm`
+- Password: `password`
+
+Change them by setting `VNC_USER` / `VNC_PW` in `compose.yaml` (or as
+environment variables). The web port is bound to `127.0.0.1` only.
 
 The first build downloads ROS 2 and Gazebo packages and can take several
 minutes. Later starts reuse the image:
@@ -97,7 +110,13 @@ values from the mesh geometry.
 
 ## Troubleshooting
 
-- Blank noVNC page: wait a few seconds, refresh, and reconnect.
+- Blank KasmVNC page: wait a few seconds, refresh, and reconnect.
+- Login prompt rejects credentials: the account is created on first start. If
+  you changed `VNC_USER`/`VNC_PW` after the first run, recreate the container
+  (`docker compose up --force-recreate gazebo`) so the new account is written.
+- For higher visual quality, open the KasmVNC control bar (left edge of the
+  page) and raise the image quality / frame rate, or switch the encoding to a
+  lossless mode.
 - Empty world or missing robot: rebuild and recreate the container so URDF and
   mesh-path changes are included:
 
@@ -114,8 +133,8 @@ values from the mesh geometry.
     'source /opt/ros/jazzy/setup.bash; source /aloha_ws/install/setup.bash; gz model --list'
   ```
 
-  The list should contain `AlohaMini1`. Refresh the noVNC browser page after a
-  container restart. In Gazebo, select `AlohaMini1` in the Entity Tree and use
+  The list should contain `AlohaMini1`. Refresh the KasmVNC browser page after
+  a container restart. In Gazebo, select `AlohaMini1` in the Entity Tree and use
   the mouse wheel over the 3D viewport to zoom toward it.
 - Slow rendering: software OpenGL is enabled for portability. Increase Docker
   Desktop CPU and memory allocation if needed.

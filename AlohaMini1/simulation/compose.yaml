@@ -7,9 +7,11 @@ services:
     ports:
       - "127.0.0.1:6080:6080"
     environment:
-      VNC_RESOLUTION: "${VNC_RESOLUTION:-1600x900x24}"
+      VNC_RESOLUTION: "${VNC_RESOLUTION:-1920x1080x24}"
+      VNC_USER: "${VNC_USER:-kasm}"
+      VNC_PW: "${VNC_PW:-password}"
       LIBGL_ALWAYS_SOFTWARE: "1"
-    shm_size: "1gb"
+    shm_size: "8gb"
 
   gazebo-headless:
     build:
