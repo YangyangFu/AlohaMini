@@ -14,9 +14,16 @@ def generate_launch_description():
     ros_gz_share = get_package_share_directory("ros_gz_sim")
     world_path = os.path.join(package_share, "worlds", "empty.sdf")
     urdf_path = os.path.join(package_share, "urdf", "Aloha.urdf")
+    controllers_yaml = os.path.join(package_share, "config", "controllers.yaml")
 
     with open(urdf_path, "r", encoding="utf-8") as urdf_file:
         robot_description = urdf_file.read()
+
+    # The URDF ships with a placeholder token for the gz_ros2_control parameters
+    # file so it stays portable; resolve it to this machine's absolute path here.
+    robot_description = robot_description.replace(
+        "__CONTROLLERS_YAML__", controllers_yaml
+    )
 
     gui = LaunchConfiguration("gui")
     gazebo = IncludeLaunchDescription(
@@ -67,6 +74,27 @@ def generate_launch_description():
         output="screen",
     )
 
+    # Controller spawners. gz_ros2_control hosts the controller_manager inside
+    # the Gazebo process, so these connect to /controller_manager once the model
+    # (and its plugin) has been created. joint_state_broadcaster is brought up
+    # first, then the motion controllers.
+    def spawner(*controllers):
+        return Node(
+            package="controller_manager",
+            executable="spawner",
+            arguments=[*controllers, "--controller-manager", "/controller_manager"],
+            parameters=[{"use_sim_time": True}],
+            output="screen",
+        )
+
+    jsb_spawner = spawner("joint_state_broadcaster")
+    controller_spawner = spawner(
+        "wheel_velocity_controller",
+        "left_arm_controller",
+        "right_arm_controller",
+        "lift_controller",
+    )
+
     return LaunchDescription(
         [
             DeclareLaunchArgument(
@@ -79,5 +107,9 @@ def generate_launch_description():
             robot_state_publisher,
             clock_bridge,
             TimerAction(period=3.0, actions=[spawn_robot]),
+            # Give the model + gz_ros2_control plugin time to come up before the
+            # spawners try to reach /controller_manager.
+            TimerAction(period=8.0, actions=[jsb_spawner]),
+            TimerAction(period=10.0, actions=[controller_spawner]),
         ]
     )

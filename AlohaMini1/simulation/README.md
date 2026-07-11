@@ -153,27 +153,69 @@ RViz-only visualization remains available:
 ros2 launch aloha display.launch.py
 ```
 
+## Controlling the Robot
+
+The robot is actuated through `ros2_control` with the `gz_ros2_control`
+plugin. The controller manager runs inside the Gazebo process and is
+configured by [`config/controllers.yaml`](src/Aloha/config/controllers.yaml).
+`gazebo.launch.py` spawns five controllers, all of which come up `active`:
+
+| Controller | Type | Joints | Command |
+| --- | --- | --- | --- |
+| `joint_state_broadcaster` | broadcaster | all | publishes `/joint_states` |
+| `wheel_velocity_controller` | `JointGroupVelocityController` | `wheel1/2/3_joint` | wheel speed (rad/s) |
+| `left_arm_controller` | `JointTrajectoryController` | `left_joint1..6` | position |
+| `right_arm_controller` | `JointTrajectoryController` | `right_joint1..6` | position |
+| `lift_controller` | `JointTrajectoryController` | `vertical_move` | position |
+
+Because a controller actively holds every joint, the base stays put instead of
+creeping across the floor as the earlier passive model did.
+
+Check the controllers and drive the robot from another terminal:
+
+```bash
+docker compose exec gazebo bash
+source /opt/ros/jazzy/setup.bash && source /aloha_ws/install/setup.bash
+
+ros2 control list_controllers
+
+# Spin the three wheels (equal speeds rotate the omni base in place):
+ros2 topic pub -1 /wheel_velocity_controller/commands \
+  std_msgs/msg/Float64MultiArray '{data: [3.0, 3.0, 3.0]}'
+
+# Move the left arm to a pose:
+ros2 topic pub -1 /left_arm_controller/joint_trajectory \
+  trajectory_msgs/msg/JointTrajectory \
+  '{joint_names: [left_joint1,left_joint2,left_joint3,left_joint4,left_joint5,left_joint6],
+    points: [{positions: [0.5,0.0,0.0,0.0,0.0,0.0], time_from_start: {sec: 1}}]}'
+```
+
 ## Current Model Scope
 
 The SolidWorks URDF includes visual meshes, collision meshes, masses, and
-inertias. It is suitable for loading and inspecting the complete robot in
-Gazebo.
-
-The exported arm joints and vertical lift currently have zero-width limits
-(`lower="0"` and `upper="0"`), and the URDF has no `ros2_control` hardware
-description or Gazebo drive plugin. Consequently:
-
-- The robot spawns as a passive physics model.
-- The arms and lift remain at their exported zero positions.
-- The three wheel joints are free, but there is no mobile-base controller yet.
+inertias, plus a manually added `ros2_control` hardware description and the
+`gz_ros2_control` plugin (see [`urdf/Aloha.urdf`](src/Aloha/urdf/Aloha.urdf)).
 
 The wheel joints use the ROS names `wheel1_joint`, `wheel2_joint`, and
 `wheel3_joint`. They intentionally differ from their child-link names because
 Gazebo requires joint and link frame names to be unique.
 
-Accurate actuation requires measured joint limits and a controller model that
-matches the physical servos and three-wheel drivetrain. Do not infer those
-values from the mesh geometry.
+> **Placeholder joint limits.** The SolidWorks export left every arm and lift
+> joint with zero-width limits (`lower="0" upper="0"`), which position control
+> cannot move. They have been replaced with clearly commented **placeholder**
+> limits (±3.14 rad for the revolute arm joints; 0–0.20 m for the lift) purely
+> so the controllers function. **Replace these with values measured from the
+> real servos** before relying on them — do not infer limits from the mesh
+> geometry.
+
+Two other items remain approximate and are follow-up work:
+
+- **Omni base kinematics.** There is no upstream 3-wheel omni-drive controller,
+  so the base is driven per wheel via `wheel_velocity_controller`. A holonomic
+  `(vx, vy, wz)` → wheel-speed mapping needs a small kinematics node or a custom
+  controller.
+- **Servo dynamics.** Effort/velocity limits and any gearing/PID behaviour are
+  placeholders, not matched to the physical drivetrain.
 
 ## Troubleshooting
 

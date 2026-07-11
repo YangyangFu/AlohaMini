@@ -1,0 +1,82 @@
+# ros2_control configuration for AlohaMini1 in Gazebo (gz_ros2_control).
+#
+# The controller_manager is hosted inside the Gazebo process by the
+# gz_ros2_control-system plugin declared in urdf/Aloha.urdf. The launch file
+# spawns each controller listed here.
+#
+#   joint_state_broadcaster   publishes /joint_states for all joints
+#   wheel_velocity_controller drives the three omni wheels (velocity command)
+#   left_arm_controller       6-DOF left arm  (position trajectory)
+#   right_arm_controller      6-DOF right arm (position trajectory)
+#   lift_controller           prismatic vertical lift (position)
+#
+# NOTE: there is no upstream 3-wheel omni-drive controller, so the base is
+# controlled per-wheel. A holonomic (vx, vy, wz) -> wheel-speed mapping would
+# need a small kinematics node or a custom controller (follow-up work).
+
+controller_manager:
+  ros__parameters:
+    update_rate: 100  # Hz
+    use_sim_time: true
+
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+
+    wheel_velocity_controller:
+      type: velocity_controllers/JointGroupVelocityController
+
+    left_arm_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+    right_arm_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+    lift_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+wheel_velocity_controller:
+  ros__parameters:
+    joints:
+      - wheel1_joint
+      - wheel2_joint
+      - wheel3_joint
+
+left_arm_controller:
+  ros__parameters:
+    joints:
+      - left_joint1
+      - left_joint2
+      - left_joint3
+      - left_joint4
+      - left_joint5
+      - left_joint6
+    command_interfaces:
+      - position
+    state_interfaces:
+      - position
+      - velocity
+
+right_arm_controller:
+  ros__parameters:
+    joints:
+      - right_joint1
+      - right_joint2
+      - right_joint3
+      - right_joint4
+      - right_joint5
+      - right_joint6
+    command_interfaces:
+      - position
+    state_interfaces:
+      - position
+      - velocity
+
+lift_controller:
+  ros__parameters:
+    joints:
+      - vertical_move
+    command_interfaces:
+      - position
+    state_interfaces:
+      - position
+      - velocity

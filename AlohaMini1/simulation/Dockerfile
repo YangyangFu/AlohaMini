@@ -13,11 +13,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     fluxbox \
     mesa-utils \
     python3-colcon-common-extensions \
+    ros-jazzy-controller-manager \
+    ros-jazzy-gz-ros2-control \
     ros-jazzy-joint-state-publisher \
     ros-jazzy-joint-state-publisher-gui \
     ros-jazzy-robot-state-publisher \
     ros-jazzy-ros-gz-bridge \
     ros-jazzy-ros-gz-sim \
+    ros-jazzy-ros2-control \
+    ros-jazzy-ros2-controllers \
     ros-jazzy-rviz2 \
     ros-jazzy-xacro \
     xfonts-base \

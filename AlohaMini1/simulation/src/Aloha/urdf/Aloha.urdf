@@ -96,6 +96,9 @@
       link="wheel1" />
     <axis
       xyz="0 -1 0" />
+    <dynamics
+      damping="0.5"
+      friction="0.1" />
   </joint>
   <link
     name="wheel2">
@@ -149,6 +152,9 @@
       link="wheel2" />
     <axis
       xyz="0 -1 0" />
+    <dynamics
+      damping="0.5"
+      friction="0.1" />
   </joint>
   <link
     name="wheel3">
@@ -202,6 +208,9 @@
       link="wheel3" />
     <axis
       xyz="-0.015476 -0.99988 0" />
+    <dynamics
+      damping="0.5"
+      friction="0.1" />
   </joint>
   <link
     name="vertical_link">
@@ -255,11 +264,14 @@
       link="vertical_link" />
     <axis
       xyz="0 1.8801E-05 1" />
+    <!-- PLACEHOLDER limit for the prismatic vertical lift (metres). The export
+         left it zero-width; replace with the measured travel/effort/velocity of
+         the real lift. Nonzero range is required for position control. -->
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="0.0"
+      upper="0.20"
+      effort="100.0"
+      velocity="0.5" />
   </joint>
   <link
     name="left_base">
@@ -366,11 +378,15 @@
       link="left_link1" />
     <axis
       xyz="0.00011908 0.0099879 -0.99995" />
+    <!-- PLACEHOLDER limit: the SolidWorks export left this joint zero-width.
+         Replace lower/upper/effort/velocity with values measured from the real
+         servo before relying on this for anything quantitative. Nonzero limits
+         are required so the position controller can actually move the joint. -->
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-3.14159"
+      upper="3.14159"
+      effort="50.0"
+      velocity="3.0" />
   </joint>
   <link
     name="left_link2">
@@ -424,11 +440,15 @@
       link="left_link2" />
     <axis
       xyz="0.999994864047587 -0.00320379392081127 8.70801950002401E-05" />
+    <!-- PLACEHOLDER limit: the SolidWorks export left this joint zero-width.
+         Replace lower/upper/effort/velocity with values measured from the real
+         servo before relying on this for anything quantitative. Nonzero limits
+         are required so the position controller can actually move the joint. -->
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-3.14159"
+      upper="3.14159"
+      effort="50.0"
+      velocity="3.0" />
   </joint>
   <link
     name="left_link3">
@@ -482,11 +502,15 @@
       link="left_link3" />
     <axis
       xyz="0.99996 -0.0032908 0.0088132" />
+    <!-- PLACEHOLDER limit: the SolidWorks export left this joint zero-width.
+         Replace lower/upper/effort/velocity with values measured from the real
+         servo before relying on this for anything quantitative. Nonzero limits
+         are required so the position controller can actually move the joint. -->
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-3.14159"
+      upper="3.14159"
+      effort="50.0"
+      velocity="3.0" />
   </joint>
   <link
     name="left_link4">
@@ -540,11 +564,15 @@
       link="left_link4" />
     <axis
       xyz="0.999774464019127 -0.0121028846500289 0.0174511110940406" />
+    <!-- PLACEHOLDER limit: the SolidWorks export left this joint zero-width.
+         Replace lower/upper/effort/velocity with values measured from the real
+         servo before relying on this for anything quantitative. Nonzero limits
+         are required so the position controller can actually move the joint. -->
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-3.14159"
+      upper="3.14159"
+      effort="50.0"
+      velocity="3.0" />
   </joint>
   <link
     name="left_link5">
@@ -598,11 +626,15 @@
       link="left_link5" />
     <axis
       xyz="0.0119284594940202 0.999878198776736 0.0100647635386641" />
+    <!-- PLACEHOLDER limit: the SolidWorks export left this joint zero-width.
+         Replace lower/upper/effort/velocity with values measured from the real
+         servo before relying on this for anything quantitative. Nonzero limits
+         are required so the position controller can actually move the joint. -->
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-3.14159"
+      upper="3.14159"
+      effort="50.0"
+      velocity="3.0" />
   </joint>
   <link
     name="left_link6">
@@ -656,11 +688,15 @@
       link="left_link6" />
     <axis
       xyz="-0.999889727846743 0.0120164296808642 -0.00872568417324989" />
+    <!-- PLACEHOLDER limit: the SolidWorks export left this joint zero-width.
+         Replace lower/upper/effort/velocity with values measured from the real
+         servo before relying on this for anything quantitative. Nonzero limits
+         are required so the position controller can actually move the joint. -->
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-3.14159"
+      upper="3.14159"
+      effort="50.0"
+      velocity="3.0" />
   </joint>
   <link
     name="right_base">
@@ -767,11 +803,15 @@
       link="right_link1" />
     <axis
       xyz="0.000119075661457425 0.00998790806073686 -0.999950112512398" />
+    <!-- PLACEHOLDER limit: the SolidWorks export left this joint zero-width.
+         Replace lower/upper/effort/velocity with values measured from the real
+         servo before relying on this for anything quantitative. Nonzero limits
+         are required so the position controller can actually move the joint. -->
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-3.14159"
+      upper="3.14159"
+      effort="50.0"
+      velocity="3.0" />
   </joint>
   <link
     name="right_link2">
@@ -825,11 +865,15 @@
       link="right_link2" />
     <axis
       xyz="0.999994864047587 -0.00320379392081127 8.70801950002401E-05" />
+    <!-- PLACEHOLDER limit: the SolidWorks export left this joint zero-width.
+         Replace lower/upper/effort/velocity with values measured from the real
+         servo before relying on this for anything quantitative. Nonzero limits
+         are required so the position controller can actually move the joint. -->
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-3.14159"
+      upper="3.14159"
+      effort="50.0"
+      velocity="3.0" />
   </joint>
   <link
     name="right_link3">
@@ -883,11 +927,15 @@
       link="right_link3" />
     <axis
       xyz="0.999955748189333 -0.00329083176439995 0.0088131770326472" />
+    <!-- PLACEHOLDER limit: the SolidWorks export left this joint zero-width.
+         Replace lower/upper/effort/velocity with values measured from the real
+         servo before relying on this for anything quantitative. Nonzero limits
+         are required so the position controller can actually move the joint. -->
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-3.14159"
+      upper="3.14159"
+      effort="50.0"
+      velocity="3.0" />
   </joint>
   <link
     name="right_link4">
@@ -941,11 +989,15 @@
       link="right_link4" />
     <axis
       xyz="0.999774464019126 -0.0121028846500287 0.0174511110940404" />
+    <!-- PLACEHOLDER limit: the SolidWorks export left this joint zero-width.
+         Replace lower/upper/effort/velocity with values measured from the real
+         servo before relying on this for anything quantitative. Nonzero limits
+         are required so the position controller can actually move the joint. -->
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-3.14159"
+      upper="3.14159"
+      effort="50.0"
+      velocity="3.0" />
   </joint>
   <link
     name="right_link5">
@@ -999,11 +1051,15 @@
       link="right_link5" />
     <axis
       xyz="0.0119284594940119 0.999878198776736 0.0100647635386643" />
+    <!-- PLACEHOLDER limit: the SolidWorks export left this joint zero-width.
+         Replace lower/upper/effort/velocity with values measured from the real
+         servo before relying on this for anything quantitative. Nonzero limits
+         are required so the position controller can actually move the joint. -->
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-3.14159"
+      upper="3.14159"
+      effort="50.0"
+      velocity="3.0" />
   </joint>
   <link
     name="right_link6">
@@ -1057,10 +1113,136 @@
       link="right_link6" />
     <axis
       xyz="-0.999889727846743 0.0120164296808642 -0.00872568417324984" />
+    <!-- PLACEHOLDER limit: the SolidWorks export left this joint zero-width.
+         Replace lower/upper/effort/velocity with values measured from the real
+         servo before relying on this for anything quantitative. Nonzero limits
+         are required so the position controller can actually move the joint. -->
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-3.14159"
+      upper="3.14159"
+      effort="50.0"
+      velocity="3.0" />
   </joint>
+
+  <!-- Manually added (not part of the SolidWorks export): give the three drive
+       wheels real contact friction so the passive base stops creeping across
+       the floor. Gazebo/DART reads mu1 (rolling direction) and mu2 (lateral);
+       together with the <dynamics> damping on each wheel joint this holds the
+       base stationary until a real drive controller is added. -->
+  <gazebo reference="wheel1">
+    <mu1>1.0</mu1>
+    <mu2>1.0</mu2>
+  </gazebo>
+  <gazebo reference="wheel2">
+    <mu1>1.0</mu1>
+    <mu2>1.0</mu2>
+  </gazebo>
+  <gazebo reference="wheel3">
+    <mu1>1.0</mu1>
+    <mu2>1.0</mu2>
+  </gazebo>
+
+  <!-- ==================================================================== -->
+  <!-- ros2_control: hardware interface for gz_ros2_control (added manually, -->
+  <!-- not part of the SolidWorks export). The three drive wheels use a      -->
+  <!-- velocity command interface; the vertical lift and both 6-DOF arms use -->
+  <!-- a position command interface. With a controller actively holding each -->
+  <!-- joint, the base no longer creeps (the earlier passive-physics drift). -->
+  <!-- ==================================================================== -->
+  <ros2_control name="AlohaMiniSystem" type="system">
+    <hardware>
+      <plugin>gz_ros2_control/GazeboSimSystem</plugin>
+    </hardware>
+    <joint name="wheel1_joint">
+      <command_interface name="velocity"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="wheel2_joint">
+      <command_interface name="velocity"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="wheel3_joint">
+      <command_interface name="velocity"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="vertical_move">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="left_joint1">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="left_joint2">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="left_joint3">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="left_joint4">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="left_joint5">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="left_joint6">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="right_joint1">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="right_joint2">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="right_joint3">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="right_joint4">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="right_joint5">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+    <joint name="right_joint6">
+      <command_interface name="position"/>
+      <state_interface name="position"/>
+      <state_interface name="velocity"/>
+    </joint>
+  </ros2_control>
+
+  <!-- gz_ros2_control system plugin. It hosts a controller_manager inside the
+       Gazebo process. The __CONTROLLERS_YAML__ token is replaced at launch
+       time with the absolute path to config/controllers.yaml (see
+       gazebo.launch.py), which keeps this URDF portable across machines. -->
+  <gazebo>
+    <plugin filename="gz_ros2_control-system"
+            name="gz_ros2_control::GazeboSimROS2ControlPlugin">
+      <parameters>__CONTROLLERS_YAML__</parameters>
+    </plugin>
+  </gazebo>
 </robot>
