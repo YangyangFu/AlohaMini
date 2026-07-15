@@ -1,344 +1,352 @@
-# AlohaMini1 — Vision-Only Mobile Manipulation Roadmap
+# AlohaMini — Vision-Only Mobile Manipulation Roadmap
 
-## End demo
+> Status: `[ ]` not started · `[~]` in progress · `[x]` done
+> Architecture: [arch.drawio](arch.drawio)
 
-From an **arbitrary safe location within a previously mapped house**, a user says or types **"bring me an apple from the kitchen."** The robot:
+## 1. Demo contract
 
-1. interprets the command;
-2. globally relocalizes in a persistent visual map, then navigates to the kitchen using cameras and wheel odometry (no LiDAR);
-3. finds an apple on a known countertop;
-4. positions the omni base and lift, then grasps the apple;
-5. visually locates the requesting person or a designated delivery point;
-6. returns, presents the apple, and releases it only after confirmation.
+From an **arbitrary safe pose in a previously mapped house**, a user says or types:
 
-The first complete demo should use a known, pre-mapped home, arbitrary collision-free starting poses within the mapped area, one known countertop, controlled lighting, one apple class, and a stationary requester. The robot may not assume its initial map pose. Generalization to new homes comes after this works reliably.
+> “Bring me an apple from the kitchen.”
 
-> Status convention: `[ ]` not started, `[~]` in progress, `[x]` done. Each milestone has an exit criterion so progress is measurable.
+The robot must:
+
+1. parse the request;
+2. globally relocalize without being given its initial map pose;
+3. navigate to the kitchen using RGB cameras and wheel odometry;
+4. find an apple on a known countertop;
+5. align the omni base and lift, grasp the apple, and verify retention;
+6. return to the requester or a designated delivery point;
+7. present the apple and release it only after explicit confirmation;
+8. recover safely or stop with a structured failure reason.
+
+### First-demo operating envelope
+
+- One known, pre-mapped simulated/real house.
+- Arbitrary collision-free starts within the mapped operating area.
+- One known countertop and one apple class.
+- Controlled lighting and moderate, bounded clutter.
+- A stationary requester or fixed delivery point.
+- Five RGB cameras: front, rear, top, and two wrist cameras.
+- Wheel encoders are allowed; LiDAR and depth cameras are not assumed.
+
+### Delivery order
+
+1. **Gate A — simulation:** pass the complete task in a mapped Gazebo house.
+2. **Gate B — real house:** deploy the same interfaces and behavior tree, then fine-tune only where real evaluation shows a gap.
+
+Autonomous real-house integration starts only after Gate A passes. Hardware bring-up, calibration, teleoperation, mapping, and real-data collection may run earlier because they are prerequisites.
+
+### Out of scope for the first demo
+
+- Previously unseen houses.
+- Unrestricted language-to-action control.
+- General object retrieval or arbitrary countertops.
+- Face recognition or a moving requester.
+- Fully learned safety, task sequencing, or global planning.
 
 ---
 
-## Constraints and design choices
+## 2. System architecture
 
-- **Vision only for exteroception:** no LiDAR. The baseline hardware has five RGB cameras: top, front, rear, and two wrist/arm cameras.
-- **Wheel encoders are allowed:** fuse wheel odometry with vision; do not expect monocular vision alone to provide robust metric scale.
-- **No depth camera is assumed:** obtain geometry from calibrated multi-view/stereo where camera overlap permits, visual SLAM, known object size, or learned monocular depth. Treat learned depth as uncertain near transparent, reflective, textureless, or thin objects.
-- **Persistent house map is required:** arbitrary starting locations require global visual relocalization before navigation. AprilTags may bootstrap and validate the system, but a taught route between fixed stations is not sufficient.
-- **Progressive autonomy:** first build a house-scale visual map with distributed AprilTags as robust relocalization anchors, then replace tag dependence with markerless visual place recognition and localization.
-- **Offboard inference is acceptable initially:** Raspberry Pi 5 handles motor I/O and safety; a workstation may run SLAM and policies. Optimize or move inference onboard only after the pipeline works.
-- **Safety is independent of perception:** vision can fail. Use an E-stop, deadman during development, command timeouts, speed/force limits, keep-out zones, and a human-supervised release.
+### Deployment boundaries
 
-### Proposed camera roles
+| Boundary | Responsibilities | Must not depend on |
+|---|---|---|
+| Operator clients | Web/phone UI, keyboard, gamepad, camera preview, control ownership, release confirmation | Simulator ground truth |
+| GPU workstation | UI gateway, behavior tree, SLAM/relocalization, perception, planning, learned policies, visualization, logging, Gazebo | Safety-critical stopping as its only protection |
+| Raspberry Pi 5 | Real sensor/motor I/O, hardware bridge, wheel kinematics, odometry acquisition, command watchdog, conservative limits, fault latch | Continuous workstation or network availability |
+| Physical robot | Five RGB cameras, encoders, omni base, lift, dual arms, grippers, independent physical E-stop | UI or network for emergency stopping |
+| Digital twin | Gazebo integration tests, mapped house, robot/sensor model, randomization, failure injection, privileged training labels | Privileged state at deployed runtime inputs |
 
-| Camera | Primary role |
-|---|---|
-| Front/chest | visual navigation, obstacle detection, person/target detection |
-| Rear | safe reverse motion and rear obstacle detection |
-| Top | wide-context semantic localization and approach planning |
-| Left/right wrist | grasp alignment, visual servoing, manipulation policy observations |
+Gazebo Harmonic is the primary integration simulator because the ROS 2 Jazzy and `ros2_control` stack already works. MuJoCo is optional for high-throughput manipulation training; it is not the Gate A acceptance environment.
 
-[ ] Record actual camera placement, field of view, frame rate, exposure controls, and whether any pair has useful stereo overlap. This determines whether metric stereo is practical.
+### Runtime command path
+
+`UI / keyboard / gamepad → control ownership → mode manager → safety supervisor → shared ROS 2 commands → simulator adapter or Raspberry Pi hardware bridge`
+
+Operating modes are explicit: `DISABLED`, `MANUAL_BASE`, `MANUAL_WHOLE_BODY`, `AUTONOMOUS`, and `FAULT`.
+
+### Runtime autonomy path
+
+`request → behavior tree → perception/localization → global planner → local navigation or manipulation controller → safety supervisor → robot`
+
+Visualization and logging subscribe to the shared ROS graph; they do not sit in the control path.
+
+### Sim/real parity contract
+
+Simulation and hardware must use the same:
+
+- ROS topics, services, actions, TF frame names, and failure codes;
+- behavior-tree states and transition rules;
+- camera image shapes, rates, normalization, and calibration schema;
+- policy observations, actions, command rates, and timeouts;
+- safety supervisor semantics and operating modes.
+
+Only the final adapter differs:
+
+- simulation: `gz_ros2_control` and Gazebo sensor plugins;
+- hardware: Raspberry Pi ROS/LeRobot bridge.
+
+Simulator ground truth may be used for labels, training, reset, and scoring, but never as a deployed policy or behavior-tree input.
+
+### Required TF and interface contract
+
+- [ ] Freeze the TF tree: `map → odom → base_link`, wheel frames, lift, arm/tool frames, and five optical frames.
+- [ ] Freeze normalized base commands: `vx`, `vy`, and `yaw` velocity.
+- [ ] Define lift, arm, gripper, mode, stop, control-ownership, and release-confirmation interfaces.
+- [ ] Define localization, perception, reachability, grasp-retention, and recipient status messages.
+- [ ] Define command timestamps, confidence fields, timeout behavior, and structured failure codes.
+- [ ] Add interface conformance tests that run against both Gazebo and the hardware bridge.
 
 ---
 
-## Current baseline and critical gaps
+## 3. Baseline and immediate blockers
 
 ### Working
 
-- [x] Gazebo Harmonic + ROS 2 Jazzy simulation stack is containerized.
-- [x] `ros2_control` + `gz_ros2_control` has five active controllers: wheels, both arms, lift, and joint-state broadcaster.
-- [x] Robot model includes a 3-wheel omni base, two 6-DOF arms, and a vertical lift.
+- [x] Gazebo Harmonic + ROS 2 Jazzy stack is containerized.
+- [x] `ros2_control` + `gz_ros2_control` has wheel, dual-arm, lift, and joint-state controllers.
+- [x] The robot model contains a 3-wheel omni base, two 6-DOF arms, and a vertical lift.
 
-### Blocking gaps
+### Critical path
 
-- [ ] Add the real follower grippers to URDF, Gazebo, and `ros2_control`; the current model ends at arm joint 6.
-- [ ] Add all five RGB camera links, optical frames, intrinsics, and Gazebo sensor plugins. Do **not** add LiDAR to the roadmap.
-- [ ] Replace placeholder arm/lift joint limits with measured range, velocity, and effort limits.
-- [ ] Implement holonomic `cmd_vel` to wheel velocity mapping and wheel odometry.
-- [ ] Inventory the real bus topology, servo IDs, signs, gear ratios, and existing LeRobot interfaces.
-- [ ] Define stable ROS interfaces and TF frames shared by simulation and hardware.
-
----
-
-## Milestone 0 — Safe manual robot
-
-Goal: a person can safely drive and pose the complete robot before autonomy is attempted.
-
-### Simulation
-
-- [ ] Add accurate gripper geometry, collision meshes, transmissions, and controllers.
-- [ ] Verify wheel radius and wheel poses/drive angles from CAD or measurements.
-- [ ] Implement `base_kinematics`: `/cmd_vel` → three wheel velocities.
-- [ ] Implement forward wheel odometry: joint states → `/wheel/odom` and `odom → base_link`.
-- [ ] Add a browser/phone-friendly joystick with holonomic X/Y/yaw, speed scaling, deadman, and E-stop controls.
-- [ ] Add joint/lift/gripper teleoperation and command watchdogs.
-
-### Hardware
-
-- [ ] Bring up wheels, lift, arms, and grippers through one consistent hardware abstraction (ROS or a thin bridge to the existing LeRobot stack).
-- [ ] Calibrate encoder zero, direction, scaling, motion limits, velocity/current limits, and gripper open/closed positions.
-- [ ] Add physical E-stop, software command timeout, startup pose checks, and conservative speed limits.
-- [ ] Measure base odometry error over forward, lateral, rotation, and square trajectories.
-
-**Exit criterion:** 30 minutes of supervised manual operation with no stale-command motion; drive to within 10 cm / 10° over a 2 m indoor path; stop reliably on deadman release or E-stop.
+- [ ] Add the real follower grippers to URDF, Gazebo, and `ros2_control`.
+- [ ] Add all five RGB camera links, optical frames, intrinsics, and Gazebo plugins.
+- [ ] Replace placeholder arm/lift limits with measured range, velocity, and effort limits.
+- [ ] Verify wheel geometry and implement holonomic `/cmd_vel` mapping.
+- [ ] Implement wheel odometry and publish `odom → base_link`.
+- [ ] Inventory the real bus topology, servo IDs, signs, gear ratios, and LeRobot interfaces.
+- [ ] Complete the shared ROS/TF interface contract above.
 
 ---
 
-## Milestone 1 — Calibrated vision and data plumbing
+## 4. Milestones
 
-Goal: camera observations are synchronized, geometrically meaningful, and identical at the policy boundary in sim and hardware.
+### M0 — Safe manual control in simulation and hardware
 
+**Goal:** safely drive and pose the complete robot before autonomy.
+
+#### Operator and safety layer
+
+- [ ] Implement normalized manual commands for base, lift, arms, grippers, speed scale, and stop.
+- [ ] Implement gamepad control with holonomic translation, yaw, lift, speed mode, and deadman.
+- [ ] Implement keyboard fallback for base, yaw, lift, and stop.
+- [ ] Implement the browser UI with control ownership, connection state, camera preview, battery/controller state, localization, limits, and faults.
+- [ ] Prevent simultaneous command ownership by multiple clients.
+- [ ] Add timestamps, watchdogs, deadman gating, rate/acceleration limits, and a latched fault state.
+- [ ] Record operator inputs with synchronized observations and robot state.
+
+#### Simulation and hardware adapters
+
+- [ ] Add accurate gripper geometry, collisions, transmissions, and controllers.
+- [ ] Verify wheel radius, wheel poses, and drive angles from CAD/measurement.
+- [ ] Connect all operator clients to the simulated base, lift, arms, and grippers.
+- [ ] Bring up the real actuators through one Raspberry Pi hardware abstraction.
+- [ ] Calibrate encoder zero, direction, scaling, motion/current limits, and gripper endpoints.
+- [ ] Add an independent physical E-stop, startup checks, command timeout, and conservative hardware limits.
+- [ ] Verify deadman release, Wi-Fi loss, browser closure, controller disconnect, and host crash all stop motion.
+- [ ] Measure odometry over forward, lateral, rotation, and square trajectories.
+
+**Exit:** all three operator clients use the same command path in sim and hardware; 30 minutes of supervised operation without stale/conflicting commands; ≤10 cm / 10° error over a 2 m indoor path; reliable stop on deadman, disconnect, timeout, mode change, fault, and E-stop.
+
+### M1 — Calibrated vision and reproducible data
+
+**Goal:** policy observations are synchronized, geometrically meaningful, and identical in sim and hardware.
+
+- [ ] Record physical camera placement, field of view, rate, exposure controls, and stereo overlap.
 - [ ] Publish each camera as `image_raw` + `camera_info` with a stable optical TF frame.
-- [ ] Calibrate intrinsics and distortion for all real cameras.
-- [ ] Calibrate camera-to-base and wrist-camera-to-tool extrinsics; version the calibration files.
-- [ ] Timestamp on the capture computer and synchronize images, joint states, wheel odometry, and commands.
-- [ ] Create image health monitoring: frame age/rate, disconnect, frozen frame, excessive blur, and over/under-exposure.
-- [ ] Record/replay synchronized ROS bags and LeRobot episodes with command, calibration version, and success metadata.
-- [ ] Match sim image size, field of view, rate, topic names, and observation normalization to hardware.
-- [ ] Create a calibration validation scene with AprilTags at surveyed poses.
+- [ ] Calibrate and version intrinsics, distortion, base-camera extrinsics, and wrist-tool extrinsics.
+- [ ] Timestamp at capture and synchronize images, joints, wheel odometry, and commands.
+- [ ] Monitor frame age/rate, disconnects, frozen frames, blur, and exposure.
+- [ ] Record/replay ROS bags and LeRobot episodes with calibration ID and outcome metadata.
+- [ ] Match sim image size, field of view, rate, names, and normalization to hardware.
+- [ ] Build a surveyed AprilTag calibration-validation scene.
 
-**Exit criterion:** tag reprojection error <2 px, camera-to-robot transform validation <2 cm at manipulation distance, timestamp skew <20 ms for policy observations, and a 20-minute recording with no dropped camera stream.
+**Exit:** tag reprojection error <2 px; camera-to-robot validation <2 cm at manipulation distance; policy-observation skew <20 ms; no dropped camera stream in a 20-minute recording.
 
----
+### M2 — House-scale vision-only navigation
 
-## Simulation data factory — where learning-based control fits
+**Goal:** globally relocalize from an unknown mapped pose and safely reach named places without LiDAR.
 
-Simulation should generate large, automatically labeled datasets for bounded control skills. Keep global task sequencing, safety checks, and recovery logic explicit in a behavior tree. Train each policy behind a stable observation/action interface so it can be tested independently and replaced without rewriting the demo.
+#### Map and localization
 
-### A. Navigation control data
+- [ ] Build a realistic mapped Gazebo house with kitchen, counter, delivery area, clutter, people, and lighting variation.
+- [ ] Define operating boundaries, traversable regions, keep-out zones, and semantic goals: `kitchen`, `counter`, and `delivery`.
+- [ ] Collect mapping runs covering rooms, corridors, intersections, and both travel directions.
+- [ ] Save and version the metric visual map with calibration and environment revision.
+- [ ] Bootstrap with distributed AprilTags as relocalization anchors, not only destination markers.
+- [ ] Fuse wheel odometry with tag/visual pose while preserving `map → odom` correction.
+- [ ] Implement global pose candidate generation, geometric verification, ambiguity rejection, and confidence thresholds.
+- [ ] Implement cautious active relocalization and safe failure when ambiguity remains.
+- [ ] Detect kidnapped-robot/localization-loss conditions and trigger relocalization.
 
-**Useful simulation data**
+#### Navigation
 
-- [ ] Generate trajectories from randomized arbitrary start poses to semantic goals using a privileged planner with ground-truth map and geometry.
-- [ ] Record synchronized front/rear/top RGB, wheel odometry, robot velocity, goal direction, privileged pose, obstacle geometry, collisions, and expert velocity commands.
-- [ ] Randomize furniture layout, people, lighting, textures, camera exposure/blur, wheel slip, latency, and odometry drift.
-- [ ] Include recovery examples: blocked paths, localization loss, narrow passages, approaching people, and unsafe expert commands rejected by the safety layer.
+- [ ] Implement global planning from the verified pose to named semantic goals.
+- [ ] Implement front/rear image-based free-space and obstacle estimation.
+- [ ] Add a conservative local collision layer or velocity safety filter.
+- [ ] Configure Nav2 for the holonomic base and vision-derived obstacle representation.
+- [ ] Slow, stop, and replan around people without assuming they remain visible.
 
-**Policies it can train**
+#### Markerless target configuration
 
-- local goal-conditioned visual navigation: images + relative goal → `cmd_vel`;
-- visual obstacle avoidance / traversability prediction;
-- learned monocular depth or occupancy prediction, supervised by simulator depth and segmentation;
-- visual place descriptors for global relocalization, using simulator pose to construct positive/negative image pairs.
+- [ ] Evaluate visual-wheel or visual-inertial SLAM on AlohaMini recordings.
+- [ ] Select the backend by relocalization rate, drift, compute load, and lighting robustness.
+- [ ] Add visual place retrieval followed by geometric pose verification.
+- [ ] Resolve similar corridors/doors using multiple views plus odometry before accepting a pose.
+- [ ] Associate named semantic places with verified map poses.
+- [ ] Remove tag dependence one subsystem at a time while retaining tags for validation/safety reference.
 
-**Do not learn initially**
+**Exit:** across ≥20 starts spanning every mapped room/corridor, ≥90% correct global relocalization without pose input; zero confidently accepted wrong-room poses; ≥18/20 collision-free arrivals within 20 cm / 15°; ≥9/10 kidnapped-robot recoveries; safe stop for every injected camera/localization failure.
 
-- the metric house map or global pose solely from simulation;
-- the final safety stop;
-- unrestricted end-to-end language → wheel commands.
+### M3 — Stationary apple manipulation
 
-Use the real house to build the deployment map. Retain a classical global planner and an independent velocity safety filter even when the local controller is learned.
+**Goal:** from a parked base, detect, grasp, lift, present, and safely release an apple.
 
-### B. Base/lift pre-positioning data
+- [ ] Freeze the task envelope: counter range, reachable workspace, apple appearances, clutter, lighting, and initial poses.
+- [ ] Detect/segment the apple from top/front and wrist views with a task-specific baseline.
+- [ ] Estimate the grasp target from multi-view geometry, known size, and/or visual servoing.
+- [ ] Add target-confidence and reachability checks; rescan instead of executing low-confidence grasps.
+- [ ] Bring up leader-arm teleoperation including grippers and required base/lift commands.
+- [ ] Validate episode timing/alignment on a small diagnostic dataset before scaling collection.
+- [ ] Collect diverse real demonstrations and retain useful labeled failures.
+- [ ] Train and compare real-only versus sim-pretrained + real-fine-tuned baselines.
+- [ ] Use coarse base/lift placement, closed-loop final approach, grasp verification, and an explicit transport pose.
+- [ ] Enforce workspace limits, collision checks, action clipping, and human abort.
+- [ ] Keep release rule-based and explicitly confirmed.
 
-**Useful simulation data**
+**Exit:** ≥16/20 successful grasps over the defined pose range; ≥18/20 safe presentations; zero uncontrolled releases; failures end in abstain/retry rather than collision.
 
-- [ ] Randomize countertop height, apple pose, robot approach error, clutter, arm configuration, and camera calibration perturbations.
-- [ ] Use ground-truth geometry and IK/reachability checks to label valid base pose, yaw, lift height, arm choice, collision margin, and predicted grasp reachability.
-- [ ] Generate both successful and hard-negative placements near workspace and collision boundaries.
+### M4 — End-to-end behavior tree
 
-**Policy it can train**
+**Goal:** compose navigation and manipulation through explicit, observable, recoverable states.
 
-- multi-view RGB + target mask + robot state → base/lift alignment command or target pose.
+| State | Success output | Recovery/failure |
+|---|---|---|
+| `parse_command` | object, source, recipient | ask for clarification |
+| `global_relocalize` | verified map pose | active scan, then abort |
+| `navigate_to_kitchen` | kitchen approach reached | replan or safe stop |
+| `localize_counter` | counter pose/confidence | rescan or abort |
+| `search_for_apple` | target mask/pose | change view or report missing |
+| `select_base_pose` | reachable collision-free pose | choose alternate pose |
+| `servo_base_and_lift` | aligned robot state | bounded retry |
+| `grasp_and_verify` | retained apple in transport pose | retry or report drop |
+| `navigate_to_recipient` | delivery pose reached | replan or report missing |
+| `present_and_release` | confirmed safe release | hold; never auto-release |
+| `recover_or_abort` | bounded recovery or safe stop | structured failure code |
 
-This is a strong simulation target because labels are cheap and failures on hardware are slow and potentially unsafe.
+- [ ] Run the complete tree with mocked module outputs and injected failures.
+- [ ] Integrate relocalization + navigation + scripted grasp in Gazebo.
+- [ ] Replace the scripted grasp with the deployable manipulation controller.
+- [ ] Expose state, confidence, retries, and failure codes in one operator dashboard.
+- [ ] Limit every recovery loop to explicit retry/time bounds.
 
-### C. Apple grasp and manipulation data
+**Exit:** ≥8/10 controlled end-to-end simulation runs; no collisions or unsafe releases; ≤2 autonomous retries per run; every failure attributable from recorded logs.
 
-**Useful simulation data**
+### M5 — Gate A simulation release
 
-- [ ] Create procedurally randomized apples, countertops, clutter, lighting, camera noise, gripper friction, object mass, and contact parameters.
-- [ ] Generate expert demonstrations using scripted grasp sampling, IK, motion planning, privileged object pose, and automatic reset.
-- [ ] Record policy observations only from RGB cameras and proprioception; retain privileged state only as training labels or critic inputs that are removed at deployment.
-- [ ] Label grasp success, slip, collision, reachability, gripper closure, object retention, and failure reason automatically.
-- [ ] Generate corrective trajectories from perturbed states, not only clean successful demonstrations.
+- [ ] Use arbitrary unknown safe starts across all simulated rooms and viewing directions.
+- [ ] Use only deployable RGB, wheel/joint state, and allowed command context at runtime.
+- [ ] Run the exact hardware-target behavior tree, interfaces, observation/action shapes, rates, timeouts, and failure codes.
+- [ ] Randomize apple pose/appearance, lighting, textures, furniture, clutter, camera noise, wheel slip, latency, and selected dynamic obstacles.
+- [ ] Evaluate held-out world seeds/layouts not used for training.
+- [ ] Inject camera dropout, localization loss, network loss, blocked paths, failed grasps, object drops, and missing-recipient cases.
+- [ ] Produce a reproducible bundle: world/config seeds, calibration, maps, weights, logs, and one-command launch.
+- [ ] Freeze interfaces, behavior tree, models, maps, and configuration after acceptance.
 
-**Policies it can train**
+**Gate A acceptance:** ≥16/20 successful held-out end-to-end trials; zero collisions or unsafe releases; 100% safe stop/abort for injected critical sensor, localization, network, and policy failures; every failure explained by state history and a failure code.
 
-- apple detector/segmenter from perfectly rendered masks;
-- grasp pose or affordance predictor;
-- wrist-camera visual servo policy;
-- ACT/Diffusion/Pi-style observation-to-action manipulation policy;
-- grasp-success and object-retention estimator.
+### M6 — Gate B real-house release
 
-### D. Handoff data
+- [ ] Survey the operating boundary, counter, delivery area, keep-out zones, and emergency access.
+- [ ] Recalibrate cameras, kinematics, odometry, lift, arms, and grippers; version the real map with calibration.
+- [ ] Validate relocalization, navigation, base/lift alignment, grasp, transport retention, and confirmed handoff independently.
+- [ ] Collect teleoperation and correction episodes, then fine-tune only modules with measured sim-to-real gaps.
+- [ ] Start with low-speed supervised segmented trials; unlock end-to-end autonomy only after each segment passes its safety test.
+- [ ] Add constrained voice input and clarification for ambiguous object/source/recipient.
+- [ ] Locate the requester through explicit interaction; do not use face recognition by default.
+- [ ] Test start poses, apple appearance/position, clutter, illumination changes, and pedestrian interruptions.
+- [ ] Add a preflight check for calibration, camera health, map, battery, workspace, network, and E-stop.
+- [ ] Freeze weights, calibration, maps, dependencies, hardware revision, launch command, runbook, and recovery guide.
 
-- [ ] Simulate a bounded presentation task with randomized recipient position, hand pose, robot/person distance, and camera occlusion.
-- [ ] Train only approach/presentation pose selection in simulation initially.
-- [ ] Keep release confirmation rule-based and human-triggered until extensive real-world safety validation.
-
-### Sim-to-real training recipe
-
-1. Generate a large, diverse simulator dataset with privileged automatic labels.
-2. Pretrain perception and control policies in simulation.
-3. Validate policies in held-out simulator layouts and perturbations, not the training world.
-4. Collect a smaller real dataset using teleoperation and autonomous rollouts with human abort.
-5. Fine-tune on mixed real + simulation batches, oversampling real failure cases.
-6. Evaluate only on fixed real-world test distributions and report sim-only versus fine-tuned performance.
-
-**Data-factory exit criterion:** one command reproducibly generates versioned episodes with RGB/proprioceptive observations, deployable actions, privileged labels, domain-randomization parameters, and success/failure metadata; a policy pretrained on this data improves real-data sample efficiency over the real-only baseline.
-
----
-
-## Milestone 2 — House-scale vision-only navigation
-
-Goal: from an unknown initial pose anywhere in the mapped test area, globally relocalize and navigate to a named location without LiDAR.
-
-### 2A. Build and validate the persistent house map
-
-- [ ] Build a house/kitchen Gazebo world with realistic textures, furniture, people, lighting variation, and camera noise.
-- [ ] Add automatic episode reset, arbitrary-start sampling, ground-truth state, collision labels, and expert trajectory generation for the navigation data factory.
-- [ ] Define the mapped operating boundary, traversable regions, keep-out zones, and named semantic goals (`kitchen`, `counter`, `delivery`).
-- [ ] Collect systematic mapping runs that cover rooms, corridors, intersections, and views in both travel directions.
-- [ ] Build and save a metric visual map; version it with camera calibration and the physical environment revision.
-- [ ] Place distributed AprilTags throughout the mapped area for the first reliable implementation—not only at destination stations.
-- [ ] Fuse wheel odometry with tag/visual pose estimates in `robot_localization` (or equivalent) while preserving a separate `map → odom` correction.
-- [ ] Implement global initialization: compare live images against the saved map/tag layout, generate pose candidates, reject ambiguous matches, and declare localization only when confidence passes a threshold.
-- [ ] Add an active relocalization behavior: rotate/translate cautiously to gather views; stop and report failure if localization remains ambiguous.
-- [ ] Implement global planning from the recovered pose to named semantic goals.
-- [ ] Implement image-based free-space/obstacle detection for the front and rear cameras.
-- [ ] Add a conservative local collision layer or velocity safety filter from visual obstacle estimates.
-- [ ] Add kidnapped-robot detection and relocalization when the pose estimate jumps, becomes inconsistent, or tracking is lost.
-
-### 2B. Markerless global relocalization
-
-- [ ] Evaluate RGB visual-inertial/visual-wheel SLAM options against AlohaMini recordings. If no IMU is installed, use visual-wheel odometry or add an inexpensive IMU; this does not violate the no-LiDAR constraint.
-- [ ] Select a SLAM/localization backend based on relocalization rate, drift, CPU/GPU load, and lighting robustness—not feature count alone.
-- [ ] Add visual place recognition to retrieve candidate map locations from an arbitrary starting image, followed by geometric pose verification.
-- [ ] Handle perceptual aliasing explicitly (similar corridors/doors) using multiple views and odometry before accepting a global pose.
-- [ ] Associate named semantic places with verified poses in the saved visual map.
-- [ ] Configure Nav2 for a holonomic base using the fused pose and a vision-derived local obstacle representation.
-- [ ] Add semantic place recognition as a secondary relocalization cue.
-- [ ] Add dynamic-person handling: slow down, stop, and replan; never rely on a person remaining visible.
-
-### Validation
-
-- [ ] Sample at least 20 arbitrary starting poses across every mapped room and corridor, including poses facing away from the kitchen.
-- [ ] Test day/night lighting, texture-poor walls, motion blur, partial occlusion, moved chairs, and people crossing.
-- [ ] Test a kidnapped-robot case by moving the powered robot to another mapped location without updating its pose estimate.
-- [ ] Log localization confidence, intervention count, collisions/near misses, time, and final pose error.
-
-**Exit criterion:** across at least 20 arbitrary starting poses covering the mapped test area, ≥90% correct global relocalization without operator pose input, zero confidently accepted wrong-room poses, ≥18/20 collision-free arrivals within 20 cm / 15° of the counter approach pose, successful recovery in ≥9/10 kidnapped-robot trials, and a safe stop on every injected camera/localization failure.
+**Gate B acceptance:** ≥16/20 end-to-end trials over at least two days and arbitrary mapped starts; zero confidently accepted wrong-room poses; no collision, uncontrolled release, or unsafe human contact; 100% safe stop under injected critical failures.
 
 ---
 
-## Milestone 3 — Stationary apple manipulation
+## 5. Simulation data factory
 
-Goal: with the base parked at the counter, detect, grasp, lift, present, and release an apple.
+**Purpose:** train bounded perception/control skills behind stable interfaces. The behavior tree, global planner, release rule, and final safety filter remain explicit.
 
-### Task and perception
+### Common episode schema
 
-- [ ] Fix the first task envelope: counter height/range, reachable workspace, apple varieties, background clutter, lighting, and allowed initial poses.
-- [ ] Detect/segment the apple from top/front and wrist views; start with a task-specific detector before open-vocabulary models.
-- [ ] Estimate a grasp target from multi-view geometry, known approximate apple size, and/or visual servoing.
-- [ ] Add target confidence and reachability checks; abstain and rescan rather than execute a low-confidence grasp.
+- [ ] Record synchronized RGB, proprioception, wheel odometry, commands/actions, task context, calibration ID, randomization seed, and outcome/failure label.
+- [ ] Store privileged pose, depth, segmentation, contact, and collision state in a separate training/scoring namespace.
+- [ ] Version datasets, simulator configuration, expert generator, observation/action schema, and train/test splits.
+- [ ] Generate corrective and failure trajectories, not only clean successes.
+- [ ] Evaluate on held-out layouts, seeds, and perturbations.
 
-### Teleoperation and learning
+### Navigation data
 
-- [ ] Bring up dual leader-arm teleoperation, including grippers and lift/base commands where needed.
-- [ ] Define a versioned episode schema: synchronized camera observations, proprioception, actions, language instruction, calibration ID, reset state, and outcome/failure label.
-- [ ] Collect a small diagnostic dataset first; visualize timing and action alignment before scaling collection.
-- [ ] Collect diverse real demonstrations across apple pose, lighting, clutter, and approach error. Preserve failures where useful.
-- [ ] Build a simulation data factory for pretraining and edge cases, with randomized textures, illumination, camera parameters, dynamics, and object poses.
-- [ ] Use privileged simulator state to generate expert grasp/correction trajectories and automatic success/failure labels; exclude privileged fields from deployed policy observations.
-- [ ] Train a baseline ACT/Diffusion Policy or existing Pi policy; compare real-only vs. sim-pretrained + real-fine-tuned.
-- [ ] Run closed-loop evaluation with action clipping, workspace limits, collision checks, and human abort.
+- [ ] Generate expert trajectories from randomized starts to semantic goals.
+- [ ] Randomize layout, people, lighting, texture, blur/exposure, slip, latency, and odometry drift.
+- [ ] Include blocked paths, narrow passages, localization loss, approaching people, and rejected unsafe commands.
+- [ ] Train/evaluate local goal-conditioned navigation, traversability/obstacle prediction, monocular depth/occupancy, and visual place descriptors.
 
-### Prefer a hybrid controller
+### Base/lift alignment data
 
-- [ ] Use classical/learned perception for coarse base/lift placement.
-- [ ] Use an imitation policy or visual servo controller for final approach and grasp.
-- [ ] Use explicit state checks for gripper closure, lift, transport pose, presentation, and confirmed release.
+- [ ] Randomize counter height, apple pose, approach error, clutter, arm state, and calibration perturbations.
+- [ ] Label base pose, yaw, lift height, arm choice, reachability, and collision margin using privileged geometry/IK.
+- [ ] Include hard negatives near workspace and collision boundaries.
 
-**Exit criterion:** from a parked base, ≥16/20 successful grasps over the defined apple pose range; ≥18/20 safe presentations; zero uncontrolled releases; failures end in abstain/retry rather than collision.
+### Grasp and handoff data
 
----
+- [ ] Randomize apples, counter/clutter, lighting, camera noise, friction, mass, and contacts.
+- [ ] Generate expert grasp/correction trajectories with scripted sampling, IK, and motion planning.
+- [ ] Label grasp, slip, collision, closure, retention, reachability, and failure reason.
+- [ ] Simulate bounded presentation-pose selection with varied recipient position and occlusion.
+- [ ] Do not train automatic release for the first demo.
 
-## Milestone 4 — Mobile manipulation integration
+### Sim-to-real recipe
 
-Goal: compose navigation and manipulation through explicit, observable states.
+1. Generate diverse, automatically labeled simulation data.
+2. Pretrain bounded perception/control modules.
+3. Validate on held-out simulator distributions.
+4. Collect smaller real datasets with teleoperation and human abort.
+5. Fine-tune on mixed batches, oversampling real failures.
+6. Report sim-only, real-only, and sim-pretrained + real-fine-tuned results.
 
-### Behavior tree / state machine
-
-- [ ] `parse_command` — extract object (`apple`), source (`kitchen counter`), and recipient.
-- [ ] `global_relocalize` — recover and verify the initial `map → base_link` pose from live images; actively scan or abort if ambiguous.
-- [ ] `navigate_to_kitchen` — globally plan from the recovered arbitrary start pose and reach the kitchen approach area.
-- [ ] `localize_counter` — detect the tagged or markerless counter and refine robot pose.
-- [ ] `search_for_apple` — scan with top/front cameras and adjust lift if necessary.
-- [ ] `select_base_pose` — choose a collision-free pose that puts the target in arm workspace.
-- [ ] `servo_base_and_lift` — visually align while respecting reach and stability limits.
-- [ ] `grasp_and_verify` — grasp, check closure/visual retention, then move to transport pose.
-- [ ] `navigate_to_recipient` — use a fixed delivery point first; person identification later.
-- [ ] `present_and_release` — hold a safe pose and release only after voice/button/visual confirmation.
-- [ ] `recover_or_abort` — bounded retries for lost localization, missing apple, failed grasp, dropped object, blocked path, or missing recipient.
-
-### Integration sequence
-
-- [ ] Run the full behavior tree with mocked perception and manipulation results.
-- [ ] Integrate house-map global relocalization + navigation + scripted grasp in simulation.
-- [ ] Integrate house-map global relocalization + navigation + learned grasp on hardware.
-- [ ] Replace tags one subsystem at a time: counter localization, navigation, then recipient localization.
-- [ ] Keep module-level confidence and failure codes visible in one operator dashboard.
-
-**Exit criterion:** ≥8/10 complete supervised runs in the controlled setup, no collisions or unsafe releases, no more than two autonomous retries per run, and every failure attributable from recorded logs.
+**Exit:** one command generates versioned episodes with deployable observations/actions, isolated privileged labels, randomization metadata, and outcomes; simulation pretraining measurably improves real-data sample efficiency over the real-only baseline.
 
 ---
 
-## Milestone 5 — Robust final demo
+## 6. Execution order
 
-- [ ] Replace the fixed delivery point with visual person detection/tracking; identify the requester by explicit interaction, not face recognition by default.
-- [ ] Add voice input and a constrained intent grammar. Ask for clarification if object/source/recipient is ambiguous.
-- [ ] Test multiple apple appearances, counter positions, start poses, moderate clutter, changing illumination, and pedestrian interruptions.
-- [ ] Add a preflight checklist: calibration loaded, all cameras healthy, map available, battery sufficient, workspace clear, E-stop verified.
-- [ ] Produce a one-command launch, operator runbook, recovery guide, and automated log bundle.
-- [ ] Freeze a reproducible demo configuration: model weights, calibration, maps, dependencies, and hardware revision.
+1. **Platform:** grippers, cameras, measured limits, omni kinematics, odometry, Raspberry Pi bridge.
+2. **Manual safety:** shared commands, modes, ownership, deadman/watchdogs, UI/gamepad/keyboard.
+3. **Observations:** TF, camera calibration, synchronization, health monitoring, recording/replay.
+4. **Independent skills:** arbitrary-start relocalization/navigation and stationary pick/present.
+5. **Integration:** behavior tree, visual alignment, grasp verification, return, confirmed handoff.
+6. **Simulation release:** held-out trials, randomization, failure injection, Gate A freeze.
+7. **Real transfer:** real map/calibration, module tests, targeted fine-tuning, low-speed integration, Gate B.
 
-**Final acceptance:** ≥80% end-to-end success over 20 randomized trials across at least two days; 100% safe stop under injected camera, network, localization, and policy failures; no contact with people except the intentional handoff.
-
----
-
-## Near-term execution order
-
-### Sprint 1 — Make the platform controllable
-
-- [ ] Model both grippers and five cameras.
-- [ ] Implement omni-base kinematics and wheel odometry.
-- [ ] Build joystick/deadman control in sim, then hardware.
-- [ ] Measure and encode real limits and calibration values.
-
-### Sprint 2 — Make observations trustworthy
-
-- [ ] Bring up all real camera streams and TF frames.
-- [ ] Complete intrinsic/extrinsic calibration and synchronized recording.
-- [ ] Create the AprilTag validation and semantic-station setup.
-
-### Sprint 3 — Prove the two halves independently
-
-- [ ] Build the persistent house visual map and demonstrate global relocalization from arbitrary test poses.
-- [ ] Demonstrate kitchen navigation from every mapped room with visual obstacle stopping.
-- [ ] Demonstrate stationary teleoperated apple pick-and-present.
-- [ ] Record the first well-instrumented manipulation dataset.
-
-### Sprint 4 — Add learning and integration
-
-- [ ] Train/evaluate the first apple grasp policy.
-- [ ] Integrate coarse navigation, fine visual alignment, grasp verification, and return.
-- [ ] Run repeated trials and prioritize fixes from measured failure frequency.
-
-Markerless global relocalization is required for the intended final demo. Tags are acceptable as an engineering bootstrap and safety reference, but the roadmap should not treat navigation between fixed tagged stations as satisfying the arbitrary-start requirement. Open-vocabulary perception, language models, and generalization to previously unseen houses remain post-demo work.
+Markerless relocalization is required for the final Gate A and Gate B configurations. AprilTags are acceptable as an engineering bootstrap and safety reference, but navigation between fixed tagged stations does not satisfy the arbitrary-start requirement.
 
 ---
 
-## Metrics to log on every autonomous run
+## 7. Run metrics and definition of done
 
-- command parsed correctly;
-- initial global relocalization time, confidence, candidate poses, and pose error;
-- localization confidence, drift, and relocalizations;
+Log on every autonomous run:
+
+- parsed object, source, recipient, and clarification outcome;
+- initial relocalization time, candidates, confidence, accepted pose, and pose error;
+- localization drift, loss events, and relocalizations;
 - minimum estimated obstacle distance and safety-filter activations;
-- navigation arrival error and duration;
-- apple detection confidence and target pose uncertainty;
-- selected base/lift pose and reachability margin;
-- grasp success, retries, retention, and release confirmation;
-- interventions, E-stops, timeouts, dropped frames, and compute latency;
-- final outcome and a structured failure code.
+- navigation duration and arrival error;
+- apple confidence, target uncertainty, selected base/lift pose, and reachability margin;
+- grasp attempts, retention checks, drops, presentation result, and release confirmation;
+- behavior-tree states, retries, transitions, and structured failure code;
+- interventions, E-stops, timeouts, network loss, dropped frames, and compute latency;
+- final outcome plus simulator/config/map/calibration/model versions.
 
-The roadmap should be updated from these measurements. A subsystem is not "done" because it worked once; it is done when it meets its exit criterion under the stated test distribution.
+A subsystem is done only when it meets its exit criterion over the stated test distribution. A one-off success is evidence, not completion. Update priorities from measured failure frequency and safety impact.
