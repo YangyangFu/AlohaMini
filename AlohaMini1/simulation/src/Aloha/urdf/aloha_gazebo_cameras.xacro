@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<!-- Gazebo-only RGB camera sensors. The portable bodies, mounting poses, and
+     optical TF frames are defined separately in aloha_cameras.xacro. -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:macro name="aloha_rgb_camera_sensor"
+               params="name width:=640 height:=360 update_rate:=15 horizontal_fov:=1.3962634016">
+    <gazebo reference="${name}_camera_link">
+      <sensor name="${name}_rgb_camera" type="camera">
+        <always_on>true</always_on>
+        <visualize>false</visualize>
+        <update_rate>${update_rate}</update_rate>
+        <topic>/cameras/${name}/image_raw</topic>
+        <gz_frame_id>${name}_camera_optical_frame</gz_frame_id>
+        <camera name="${name}_rgb_camera">
+          <!-- Provisional 80-degree pinhole intrinsics. Match these values to
+               the selected physical camera mode after calibration. -->
+          <horizontal_fov>${horizontal_fov}</horizontal_fov>
+          <image>
+            <width>${width}</width>
+            <height>${height}</height>
+            <format>R8G8B8</format>
+          </image>
+          <clip>
+            <near>0.05</near>
+            <far>30.0</far>
+          </clip>
+          <camera_info_topic>/cameras/${name}/camera_info</camera_info_topic>
+        </camera>
+      </sensor>
+    </gazebo>
+  </xacro:macro>
+
+  <xacro:macro name="aloha_gazebo_cameras">
+    <xacro:aloha_rgb_camera_sensor name="chest"/>
+    <xacro:aloha_rgb_camera_sensor name="head"/>
+    <xacro:aloha_rgb_camera_sensor name="rear"/>
+  </xacro:macro>
+</robot>

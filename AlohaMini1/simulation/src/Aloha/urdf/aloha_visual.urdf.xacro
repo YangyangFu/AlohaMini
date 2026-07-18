@@ -1,5 +1,7 @@
 <?xml version="1.0"?>
 <robot name="Aloha" xmlns:xacro="http://www.ros.org/wiki/xacro">
   <xacro:include filename="aloha_description.xacro"/>
+  <xacro:include filename="aloha_cameras.xacro"/>
   <xacro:aloha_description/>
+  <xacro:aloha_cameras/>
 </robot>

@@ -126,7 +126,8 @@ docker compose --profile headless up --build gazebo-headless
 ```
 
 This starts the Gazebo server, spawns `AlohaMini1`, publishes the URDF through
-`robot_state_publisher`, and bridges `/clock` into ROS 2.
+`robot_state_publisher`, and bridges `/clock` plus all three base-camera streams
+into ROS 2.
 
 To inspect ROS 2 from another terminal:
 
@@ -135,6 +136,32 @@ docker compose exec gazebo bash
 ros2 node list
 ros2 topic list
 gz model --list
+```
+
+## RGB Camera Streams
+
+The first three physical base cameras are simulated. Their ROS names use the
+requested `chest`, `head`, and `rear` terminology; the hardware documentation
+also calls the chest camera **front** and the head camera **top**.
+
+| Camera | Mounted to | View | Image | Calibration | Optical TF frame |
+| --- | --- | --- | --- | --- | --- |
+| Chest | `vertical_link` | level front; moves with lift | `/cameras/chest/image_raw` | `/cameras/chest/camera_info` | `chest_camera_optical_frame` |
+| Head | `base_link` | front and downward | `/cameras/head/image_raw` | `/cameras/head/camera_info` | `head_camera_optical_frame` |
+| Rear | `base_link` | rear and downward | `/cameras/rear/image_raw` | `/cameras/rear/camera_info` | `rear_camera_optical_frame` |
+
+Each stream is configured for `rgb8` at 640×360, a 15 Hz target rate, and an
+80° horizontal field of view. Software-only rendering may deliver a lower
+wall-clock frame rate. These are deliberately provisional, low-cost UI and
+integration settings—not calibrated models of the 720p USB cameras. Replace
+the mount origins in `aloha_cameras.xacro` and sensor parameters in
+`aloha_gazebo_cameras.xacro` after measuring the assembled hardware.
+
+For a quick stream check inside the running container:
+
+```bash
+ros2 topic hz /cameras/head/image_raw
+ros2 topic echo --once /cameras/head/camera_info
 ```
 
 ## Native ROS 2 Use
@@ -207,8 +234,10 @@ specific URDF:
 | File | Responsibility |
 | --- | --- |
 | `aloha_description.xacro` | Portable links, joints, visuals, collisions, and inertias |
+| `aloha_cameras.xacro` | Portable camera bodies, mount transforms, and optical frames |
 | `aloha_ros2_control.xacro` | Position/velocity command and state interfaces |
 | `aloha_gazebo.xacro` | Gazebo contact parameters and `gz_ros2_control` plugin |
+| `aloha_gazebo_cameras.xacro` | Gazebo RGB sensors, provisional resolution, rate, and intrinsics |
 | `aloha_visual.urdf.xacro` | Visualization-only composition for RViz/Rerun |
 | `aloha_sim.urdf.xacro` | Complete Gazebo simulation composition |
 
@@ -240,8 +269,12 @@ parallel-gripper action controllers. Their endpoint, position-to-opening,
 velocity, effort, and stall parameters remain intentionally uncalibrated until
 they can be measured on the follower hardware.
 
-Two model items remain approximate and are follow-up work:
+Several model parameters remain approximate and are follow-up work:
 
+- **Base-camera calibration.** The three mount transforms are derived from the
+  CAD camera seats, and their pinhole intrinsics are placeholders. Measure and
+  version physical extrinsics, resolution/rate, FOV, distortion, and exposure
+  before using images for geometric perception.
 - **Omni base geometry.** The controller parameters are derived from the CAD:
   `0.0495 m` wheel radius, `0.17878 m` center-to-wheel radius, and `0.51459 rad`
   first-wheel offset. Calibrate these values against the assembled robot before

@@ -72,10 +72,18 @@ def generate_launch_description():
         ],
     )
 
-    clock_bridge = Node(
+    gazebo_bridge = Node(
         package="ros_gz_bridge",
         executable="parameter_bridge",
-        arguments=["/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock"],
+        arguments=[
+            "/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock",
+            "/cameras/chest/image_raw@sensor_msgs/msg/Image[gz.msgs.Image",
+            "/cameras/chest/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo",
+            "/cameras/head/image_raw@sensor_msgs/msg/Image[gz.msgs.Image",
+            "/cameras/head/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo",
+            "/cameras/rear/image_raw@sensor_msgs/msg/Image[gz.msgs.Image",
+            "/cameras/rear/camera_info@sensor_msgs/msg/CameraInfo[gz.msgs.CameraInfo",
+        ],
         output="screen",
     )
 
@@ -161,7 +169,7 @@ def generate_launch_description():
             gazebo,
             gazebo_headless,
             robot_state_publisher,
-            clock_bridge,
+            gazebo_bridge,
             TimerAction(period=startup_delay(12.0, 3.0), actions=[spawn_robot]),
             TimerAction(period=17.0, actions=[focus_robot]),
             # Give the model + gz_ros2_control plugin time to come up before the

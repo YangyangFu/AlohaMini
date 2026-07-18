@@ -1,0 +1,77 @@
+<?xml version="1.0"?>
+<!-- Portable camera bodies and TF frames. Sensor plugins and image transport
+     stay in aloha_gazebo_cameras.xacro so this file remains usable by RViz,
+     Rerun, and the eventual hardware description. -->
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <!-- The link origin is the lens centre. camera_link follows the conventional
+       body frame (+X forward, +Z up); camera_optical_frame follows REP 103
+       (+Z forward, +X right, +Y down). -->
+  <xacro:macro name="aloha_camera" params="name parent xyz rpy">
+    <link name="${name}_camera_link">
+      <inertial>
+        <origin xyz="-0.009 0 0" rpy="0 0 0"/>
+        <mass value="0.020"/>
+        <inertia ixx="4.32e-6" ixy="0" ixz="0"
+                 iyy="2.70e-6" iyz="0" izz="2.70e-6"/>
+      </inertial>
+      <visual name="camera_body">
+        <origin xyz="-0.009 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="0.018 0.036 0.036"/>
+        </geometry>
+        <material name="camera_body_black">
+          <color rgba="0.025 0.025 0.025 1"/>
+        </material>
+      </visual>
+      <visual name="camera_lens">
+        <origin xyz="0.001 0 0" rpy="0 1.57079632679 0"/>
+        <geometry>
+          <cylinder radius="0.006" length="0.002"/>
+        </geometry>
+        <material name="camera_lens_blue">
+          <color rgba="0.03 0.08 0.12 1"/>
+        </material>
+      </visual>
+      <collision>
+        <origin xyz="-0.009 0 0" rpy="0 0 0"/>
+        <geometry>
+          <box size="0.018 0.036 0.036"/>
+        </geometry>
+      </collision>
+    </link>
+
+    <joint name="${name}_camera_joint" type="fixed">
+      <origin xyz="${xyz}" rpy="${rpy}"/>
+      <parent link="${parent}"/>
+      <child link="${name}_camera_link"/>
+    </joint>
+
+    <link name="${name}_camera_optical_frame"/>
+    <joint name="${name}_camera_optical_joint" type="fixed">
+      <origin xyz="0 0 0" rpy="-1.57079632679 0 -1.57079632679"/>
+      <parent link="${name}_camera_link"/>
+      <child link="${name}_camera_optical_frame"/>
+    </joint>
+  </xacro:macro>
+
+  <xacro:macro name="aloha_cameras">
+    <!-- CAD-derived provisional lens poses. The chest camera moves with the
+         lift carriage. The high head and rear cameras are fixed to base_link.
+         Replace only these origins after physical extrinsic calibration. -->
+    <xacro:aloha_camera
+      name="chest"
+      parent="vertical_link"
+      xyz="0 -0.032 0.625"
+      rpy="0 0 -1.57079632679"/>
+    <xacro:aloha_camera
+      name="head"
+      parent="base_link"
+      xyz="0 -0.102 1.064"
+      rpy="0 0.78539816339 -1.57079632679"/>
+    <xacro:aloha_camera
+      name="rear"
+      parent="base_link"
+      xyz="0 0.155 1.057"
+      rpy="0 0.63429 1.57079632679"/>
+  </xacro:macro>
+</robot>

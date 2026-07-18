@@ -4,11 +4,15 @@
              default="$(find aloha)/config/controllers.yaml"/>
 
   <xacro:include filename="aloha_description.xacro"/>
+  <xacro:include filename="aloha_cameras.xacro"/>
   <xacro:include filename="aloha_ros2_control.xacro"/>
   <xacro:include filename="aloha_gazebo.xacro"/>
+  <xacro:include filename="aloha_gazebo_cameras.xacro"/>
 
   <xacro:aloha_description/>
+  <xacro:aloha_cameras/>
   <xacro:aloha_ros2_control
     hardware_plugin="gz_ros2_control/GazeboSimSystem"/>
   <xacro:aloha_gazebo controllers_file="$(arg controllers_file)"/>
+  <xacro:aloha_gazebo_cameras/>
 </robot>

@@ -27,7 +27,7 @@ The robot must:
 - One known countertop and one apple class.
 - Controlled lighting and moderate, bounded clutter.
 - A stationary requester or fixed delivery point.
-- Five RGB cameras: front, rear, top, and two wrist cameras.
+- Five RGB cameras: chest/front, head/top, rear, and two wrist cameras.
 - Wheel encoders are allowed; LiDAR and depth cameras are not assumed.
 
 ### Delivery order
@@ -92,7 +92,7 @@ Simulator ground truth may be used for labels, training, reset, and scoring, but
 
 ### Required TF and interface contract
 
-- [ ] Freeze the TF tree: `map → odom → base_link`, wheel frames, lift, arm/tool frames, and five optical frames.
+- [~] Freeze the TF tree: `map → odom → base_link`, wheel frames, lift, arm/tool frames, and five optical frames; the three base-camera optical frames now exist, while wrist frames and the final contract remain.
 - [ ] Freeze normalized base commands: `vx`, `vy`, and `yaw` velocity.
 - [ ] Define lift, arm, gripper, mode, stop, control-ownership, and release-confirmation interfaces.
 - [ ] Define localization, perception, reachability, grasp-retention, and recipient status messages.
@@ -108,11 +108,12 @@ Simulator ground truth may be used for labels, training, reset, and scoring, but
 - [x] Gazebo Harmonic + ROS 2 Jazzy stack is containerized.
 - [x] `ros2_control` + `gz_ros2_control` has wheel, dual-arm, dual-gripper, lift, and joint-state controllers.
 - [x] The robot model contains a 3-wheel omni base, two 5-DOF arms, two 1-DOF moving-jaw grippers, and a vertical lift.
+- [x] Chest, head, and rear RGB cameras publish simulated `image_raw` + `camera_info` streams with stable optical TF frames.
 
 ### Critical path
 
 - [~] Gripper CAD geometry, collisions, `ros2_control` interfaces, and dedicated action controllers exist; validate them and calibrate endpoints/contact behavior against the real follower grippers.
-- [ ] Add all five RGB camera links, optical frames, intrinsics, and Gazebo plugins.
+- [~] Chest, head, and rear camera links, optical frames, provisional intrinsics, Gazebo sensors, and ROS bridges are implemented; add the two wrist cameras and replace provisional values after physical calibration.
 - [ ] Replace placeholder arm, gripper, and lift limits with measured range, velocity, and effort limits.
 - [~] Holonomic `/cmd_vel` mapping is implemented; verify/calibrate wheel geometry on hardware.
 - [~] Simulation wheel odometry and `odom → base_link` are implemented; expose real encoder feedback through the Raspberry Pi hardware adapter and validate/calibrate hardware odometry.
@@ -155,7 +156,7 @@ Simulator ground truth may be used for labels, training, reset, and scoring, but
 **Goal:** policy observations are synchronized, geometrically meaningful, and identical in sim and hardware.
 
 - [ ] Record physical camera placement, field of view, rate, exposure controls, and stereo overlap.
-- [ ] Publish each camera as `image_raw` + `camera_info` with a stable optical TF frame.
+- [~] Chest, head, and rear simulation cameras publish `image_raw` + `camera_info` with stable optical TF frames; add and validate both wrist streams and the hardware publishers.
 - [ ] Calibrate and version intrinsics, distortion, base-camera extrinsics, and wrist-tool extrinsics.
 - [ ] Timestamp at capture and synchronize images, joints, wheel odometry, and commands.
 - [ ] Monitor frame age/rate, disconnects, frozen frames, blur, and exposure.

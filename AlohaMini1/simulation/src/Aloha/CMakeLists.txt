@@ -43,6 +43,7 @@ add_custom_command(
   DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/urdf/aloha_visual.urdf.xacro"
     "${CMAKE_CURRENT_SOURCE_DIR}/urdf/aloha_description.xacro"
+    "${CMAKE_CURRENT_SOURCE_DIR}/urdf/aloha_cameras.xacro"
   COMMENT "Generating portable visualization URDF"
   VERBATIM
 )
