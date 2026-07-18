@@ -7,8 +7,10 @@
 #   joint_state_broadcaster   publishes /joint_states for all joints
 #   omni_base_controller maps body velocity commands to the three omni wheels
 #                        and publishes wheel odometry
-#   left_arm_controller       6-DOF left arm  (position trajectory)
-#   right_arm_controller      6-DOF right arm (position trajectory)
+#   left_arm_controller       5-DOF left arm  (position trajectory)
+#   right_arm_controller      5-DOF right arm (position trajectory)
+#   left_gripper_controller   left moving jaw (position action)
+#   right_gripper_controller  right moving jaw (position action)
 #   lift_controller           prismatic vertical lift (position)
 #
 controller_manager:
@@ -27,6 +29,12 @@ controller_manager:
 
     right_arm_controller:
       type: joint_trajectory_controller/JointTrajectoryController
+
+    left_gripper_controller:
+      type: parallel_gripper_action_controller/GripperActionController
+
+    right_gripper_controller:
+      type: parallel_gripper_action_controller/GripperActionController
 
     lift_controller:
       type: joint_trajectory_controller/JointTrajectoryController
@@ -61,7 +69,6 @@ left_arm_controller:
       - left_joint3
       - left_joint4
       - left_joint5
-      - left_joint6
     command_interfaces:
       - position
     state_interfaces:
@@ -76,12 +83,24 @@ right_arm_controller:
       - right_joint3
       - right_joint4
       - right_joint5
-      - right_joint6
     command_interfaces:
       - position
     state_interfaces:
       - position
       - velocity
+
+# The CAD export calls the moving jaws left_joint6 and right_joint6. Keep those
+# joint names until the physical bus/interface contract is frozen, but expose
+# them through semantic gripper action controllers instead of arm trajectories.
+# Endpoint, tolerance, velocity, effort, and stall calibration remain future
+# hardware work; the controller package defaults are used for now.
+left_gripper_controller:
+  ros__parameters:
+    joint: left_joint6
+
+right_gripper_controller:
+  ros__parameters:
+    joint: right_joint6
 
 lift_controller:
   ros__parameters:

@@ -158,14 +158,16 @@ ros2 launch aloha display.launch.py
 The robot is actuated through `ros2_control` with the `gz_ros2_control`
 plugin. The controller manager runs inside the Gazebo process and is
 configured by [`config/controllers.yaml`](src/Aloha/config/controllers.yaml).
-`gazebo.launch.py` spawns five controllers, all of which come up `active`:
+`gazebo.launch.py` spawns seven controllers, all of which come up `active`:
 
 | Controller | Type | Joints | Command |
 | --- | --- | --- | --- |
 | `joint_state_broadcaster` | broadcaster | all | publishes `/joint_states` |
 | `omni_base_controller` | `OmniWheelDriveController` | `wheel1/2/3_joint` | body twist → wheel speed |
-| `left_arm_controller` | `JointTrajectoryController` | `left_joint1..6` | position |
-| `right_arm_controller` | `JointTrajectoryController` | `right_joint1..6` | position |
+| `left_arm_controller` | `JointTrajectoryController` | `left_joint1..5` | position trajectory |
+| `right_arm_controller` | `JointTrajectoryController` | `right_joint1..5` | position trajectory |
+| `left_gripper_controller` | `GripperActionController` | `left_joint6` moving jaw | position action |
+| `right_gripper_controller` | `GripperActionController` | `right_joint6` moving jaw | position action |
 | `lift_controller` | `JointTrajectoryController` | `vertical_move` | position |
 
 Because a controller actively holds every joint, the base stays put instead of
@@ -187,8 +189,14 @@ ros2 topic pub -r 10 /cmd_vel geometry_msgs/msg/TwistStamped \
 # Move the left arm to a pose:
 ros2 topic pub -1 /left_arm_controller/joint_trajectory \
   trajectory_msgs/msg/JointTrajectory \
-  '{joint_names: [left_joint1,left_joint2,left_joint3,left_joint4,left_joint5,left_joint6],
-    points: [{positions: [0.5,0.0,0.0,0.0,0.0,0.0], time_from_start: {sec: 1}}]}'
+  '{joint_names: [left_joint1,left_joint2,left_joint3,left_joint4,left_joint5],
+    points: [{positions: [0.5,0.0,0.0,0.0,0.0], time_from_start: {sec: 1}}]}'
+
+# Command the left moving jaw. Position is currently the uncalibrated CAD
+# joint angle, not a guaranteed finger gap in metres.
+ros2 action send_goal /left_gripper_controller/gripper_cmd \
+  control_msgs/action/ParallelGripperCommand \
+  '{command: {position: [0.2]}}'
 ```
 
 ## Robot Description Layout
@@ -218,13 +226,19 @@ The wheel joints use the ROS names `wheel1_joint`, `wheel2_joint`, and
 `wheel3_joint`. They intentionally differ from their child-link names because
 Gazebo requires joint and link frame names to be unique.
 
-> **Placeholder joint limits.** The SolidWorks export left every arm and lift
-> joint with zero-width limits (`lower="0" upper="0"`), which position control
-> cannot move. They have been replaced with clearly commented **placeholder**
-> limits (±3.14 rad for the revolute arm joints; 0–0.20 m for the lift) purely
-> so the controllers function. **Replace these with values measured from the
-> real servos** before relying on them — do not infer limits from the mesh
+> **Placeholder joint limits.** The SolidWorks export left every arm, gripper,
+> and lift joint with zero-width limits (`lower="0" upper="0"`), which
+> position control cannot move. They have been replaced with clearly commented **placeholder**
+> limits (±3.14 rad for the revolute arm and jaw joints; 0–0.20 m for the lift)
+> purely so the controllers function. **Replace these with values measured from
+> the real servos** before relying on them — do not infer limits from the mesh
 > geometry.
+
+The SO-101 CAD export names each moving jaw `left_joint6` / `right_joint6`.
+They are controlled separately from the five arm joints through dedicated
+parallel-gripper action controllers. Their endpoint, position-to-opening,
+velocity, effort, and stall parameters remain intentionally uncalibrated until
+they can be measured on the follower hardware.
 
 Two model items remain approximate and are follow-up work:
 

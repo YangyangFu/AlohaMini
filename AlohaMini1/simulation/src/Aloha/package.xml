@@ -19,6 +19,7 @@
   <exec_depend>joint_state_publisher_gui</exec_depend>
   <exec_depend>joint_trajectory_controller</exec_depend>
   <exec_depend>omni_wheel_drive_controller</exec_depend>
+  <exec_depend>parallel_gripper_controller</exec_depend>
   <exec_depend>robot_state_publisher</exec_depend>
   <exec_depend>ros_gz_bridge</exec_depend>
   <exec_depend>ros_gz_sim</exec_depend>

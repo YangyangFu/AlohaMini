@@ -106,16 +106,16 @@ Simulator ground truth may be used for labels, training, reset, and scoring, but
 ### Working
 
 - [x] Gazebo Harmonic + ROS 2 Jazzy stack is containerized.
-- [x] `ros2_control` + `gz_ros2_control` has wheel, dual-arm, lift, and joint-state controllers.
-- [x] The robot model contains a 3-wheel omni base, two 6-DOF arms, and a vertical lift.
+- [x] `ros2_control` + `gz_ros2_control` has wheel, dual-arm, dual-gripper, lift, and joint-state controllers.
+- [x] The robot model contains a 3-wheel omni base, two 5-DOF arms, two 1-DOF moving-jaw grippers, and a vertical lift.
 
 ### Critical path
 
-- [ ] Add the real follower grippers to URDF, Gazebo, and `ros2_control`.
+- [~] Gripper CAD geometry, collisions, `ros2_control` interfaces, and dedicated action controllers exist; validate them and calibrate endpoints/contact behavior against the real follower grippers.
 - [ ] Add all five RGB camera links, optical frames, intrinsics, and Gazebo plugins.
-- [ ] Replace placeholder arm/lift limits with measured range, velocity, and effort limits.
+- [ ] Replace placeholder arm, gripper, and lift limits with measured range, velocity, and effort limits.
 - [~] Holonomic `/cmd_vel` mapping is implemented; verify/calibrate wheel geometry on hardware.
-- [ ] Implement wheel odometry and publish `odom → base_link`.
+- [~] Simulation wheel odometry and `odom → base_link` are implemented; expose real encoder feedback through the Raspberry Pi hardware adapter and validate/calibrate hardware odometry.
 - [ ] Inventory the real bus topology, servo IDs, signs, gear ratios, and LeRobot interfaces.
 - [ ] Complete the shared ROS/TF interface contract above.
 
@@ -139,7 +139,7 @@ Simulator ground truth may be used for labels, training, reset, and scoring, but
 
 #### Simulation and hardware adapters
 
-- [ ] Add accurate gripper geometry, collisions, transmissions, and controllers.
+- [~] Gripper geometry, collisions, and dedicated controllers exist; validate contact behavior and add the real hardware actuator mappings.
 - [ ] Verify wheel radius, wheel poses, and drive angles from CAD/measurement.
 - [ ] Connect all operator clients to the simulated base, lift, arms, and grippers.
 - [ ] Bring up the real actuators through one Raspberry Pi hardware abstraction.
@@ -322,7 +322,7 @@ Simulator ground truth may be used for labels, training, reset, and scoring, but
 
 ## 6. Execution order
 
-1. **Platform:** grippers, cameras, measured limits, omni kinematics, odometry, Raspberry Pi bridge.
+1. **Platform:** gripper validation/calibration, cameras, measured limits, omni kinematics, odometry, Raspberry Pi bridge.
 2. **Manual safety:** shared commands, modes, ownership, deadman/watchdogs, UI/gamepad/keyboard.
 3. **Observations:** TF, camera calibration, synchronization, health monitoring, recording/replay.
 4. **Independent skills:** arbitrary-start relocalization/navigation and stationary pick/present.

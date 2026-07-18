@@ -146,6 +146,8 @@ def generate_launch_description():
     controller_spawner = spawner(
         "left_arm_controller",
         "right_arm_controller",
+        "left_gripper_controller",
+        "right_gripper_controller",
         "lift_controller",
     )
 
