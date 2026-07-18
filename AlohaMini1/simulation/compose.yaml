@@ -24,12 +24,14 @@ services:
     image: alohamini1-gazebo-x11:jazzy
     environment:
       # macOS/Windows reach the host X server over TCP via host.docker.internal.
-      # This is hardcoded (NOT inherited from the host $DISPLAY) because the host
-      # uses :0 but the container must use host.docker.internal:0. On Linux,
-      # override with `-e DISPLAY` + an X socket mount (see README).
-      DISPLAY: "host.docker.internal:0"
+      # macOS defaults to the TCP X server address; Linux inherits the host
+      # DISPLAY and uses the X socket mounted below.
+      DISPLAY: "${DISPLAY:-host.docker.internal:0}"
       # Software OpenGL avoids XQuartz indirect-GLX failures with modern Gazebo.
       LIBGL_ALWAYS_SOFTWARE: "${LIBGL_ALWAYS_SOFTWARE:-1}"
+    volumes:
+      # Used by Linux hosts; harmless when the service uses a TCP X server.
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
     shm_size: "8gb"
     profiles: ["x11"]
 

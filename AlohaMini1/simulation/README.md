@@ -102,16 +102,16 @@ profile cannot use, so forwarding raw GL calls would crash or render nothing.
 
 ### Linux
 
-On Linux the host X server uses a local socket, so override `DISPLAY` and mount
-the socket instead of using `host.docker.internal`:
+On Linux the Compose service automatically inherits `DISPLAY` and mounts the
+host X11 socket. The included launcher grants local Docker access and starts
+the service in one command:
 
 ```bash
-xhost +local:docker
-DISPLAY="$DISPLAY" docker compose --profile x11 run --rm \
-  -e DISPLAY \
-  -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
-  gazebo-x11
+./run-x11.sh
 ```
+
+On Docker Desktop for Linux, the launcher automatically proxies X11 over TCP
+because Docker Desktop does not expose the host's `/tmp/.X11-unix` socket.
 
 On a Linux host with a GPU you can also drop `LIBGL_ALWAYS_SOFTWARE` for
 hardware-accelerated rendering (add `--gpus all` and the NVIDIA Container
