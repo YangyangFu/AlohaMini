@@ -1,9 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- This URDF was automatically created by SolidWorks to URDF Exporter! Originally created by Stephen Brawner (brawner@gmail.com) 
+<!-- Core robot description. This file intentionally contains only portable
+     links, joints, visual/collision geometry, and inertial properties. -->
+<!-- This model was originally created by SolidWorks to URDF Exporter. Originally created by Stephen Brawner (brawner@gmail.com)
      Commit Version: 1.6.0-4-g7f85cfe  Build Version: 1.6.7995.38578
      For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
-<robot
-  name="Aloha">
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:macro name="aloha_description">
   <link
     name="base_link">
     <inertial>
@@ -1124,125 +1126,5 @@
       velocity="3.0" />
   </joint>
 
-  <!-- Manually added (not part of the SolidWorks export): give the three drive
-       wheels real contact friction so the passive base stops creeping across
-       the floor. Gazebo/DART reads mu1 (rolling direction) and mu2 (lateral);
-       together with the <dynamics> damping on each wheel joint this holds the
-       base stationary until a real drive controller is added. -->
-  <gazebo reference="wheel1">
-    <mu1>1.0</mu1>
-    <mu2>1.0</mu2>
-  </gazebo>
-  <gazebo reference="wheel2">
-    <mu1>1.0</mu1>
-    <mu2>1.0</mu2>
-  </gazebo>
-  <gazebo reference="wheel3">
-    <mu1>1.0</mu1>
-    <mu2>1.0</mu2>
-  </gazebo>
-
-  <!-- ==================================================================== -->
-  <!-- ros2_control: hardware interface for gz_ros2_control (added manually, -->
-  <!-- not part of the SolidWorks export). The three drive wheels use a      -->
-  <!-- velocity command interface; the vertical lift and both 6-DOF arms use -->
-  <!-- a position command interface. With a controller actively holding each -->
-  <!-- joint, the base no longer creeps (the earlier passive-physics drift). -->
-  <!-- ==================================================================== -->
-  <ros2_control name="AlohaMiniSystem" type="system">
-    <hardware>
-      <plugin>gz_ros2_control/GazeboSimSystem</plugin>
-    </hardware>
-    <joint name="wheel1_joint">
-      <command_interface name="velocity"/>
-      <state_interface name="position"/>
-      <state_interface name="velocity"/>
-    </joint>
-    <joint name="wheel2_joint">
-      <command_interface name="velocity"/>
-      <state_interface name="position"/>
-      <state_interface name="velocity"/>
-    </joint>
-    <joint name="wheel3_joint">
-      <command_interface name="velocity"/>
-      <state_interface name="position"/>
-      <state_interface name="velocity"/>
-    </joint>
-    <joint name="vertical_move">
-      <command_interface name="position"/>
-      <state_interface name="position"/>
-      <state_interface name="velocity"/>
-    </joint>
-    <joint name="left_joint1">
-      <command_interface name="position"/>
-      <state_interface name="position"/>
-      <state_interface name="velocity"/>
-    </joint>
-    <joint name="left_joint2">
-      <command_interface name="position"/>
-      <state_interface name="position"/>
-      <state_interface name="velocity"/>
-    </joint>
-    <joint name="left_joint3">
-      <command_interface name="position"/>
-      <state_interface name="position"/>
-      <state_interface name="velocity"/>
-    </joint>
-    <joint name="left_joint4">
-      <command_interface name="position"/>
-      <state_interface name="position"/>
-      <state_interface name="velocity"/>
-    </joint>
-    <joint name="left_joint5">
-      <command_interface name="position"/>
-      <state_interface name="position"/>
-      <state_interface name="velocity"/>
-    </joint>
-    <joint name="left_joint6">
-      <command_interface name="position"/>
-      <state_interface name="position"/>
-      <state_interface name="velocity"/>
-    </joint>
-    <joint name="right_joint1">
-      <command_interface name="position"/>
-      <state_interface name="position"/>
-      <state_interface name="velocity"/>
-    </joint>
-    <joint name="right_joint2">
-      <command_interface name="position"/>
-      <state_interface name="position"/>
-      <state_interface name="velocity"/>
-    </joint>
-    <joint name="right_joint3">
-      <command_interface name="position"/>
-      <state_interface name="position"/>
-      <state_interface name="velocity"/>
-    </joint>
-    <joint name="right_joint4">
-      <command_interface name="position"/>
-      <state_interface name="position"/>
-      <state_interface name="velocity"/>
-    </joint>
-    <joint name="right_joint5">
-      <command_interface name="position"/>
-      <state_interface name="position"/>
-      <state_interface name="velocity"/>
-    </joint>
-    <joint name="right_joint6">
-      <command_interface name="position"/>
-      <state_interface name="position"/>
-      <state_interface name="velocity"/>
-    </joint>
-  </ros2_control>
-
-  <!-- gz_ros2_control system plugin. It hosts a controller_manager inside the
-       Gazebo process. The __CONTROLLERS_YAML__ token is replaced at launch
-       time with the absolute path to config/controllers.yaml (see
-       gazebo.launch.py), which keeps this URDF portable across machines. -->
-  <gazebo>
-    <plugin filename="gz_ros2_control-system"
-            name="gz_ros2_control::GazeboSimROS2ControlPlugin">
-      <parameters>__CONTROLLERS_YAML__</parameters>
-    </plugin>
-  </gazebo>
+  </xacro:macro>
 </robot>

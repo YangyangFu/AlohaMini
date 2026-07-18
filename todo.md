@@ -114,7 +114,7 @@ Simulator ground truth may be used for labels, training, reset, and scoring, but
 - [ ] Add the real follower grippers to URDF, Gazebo, and `ros2_control`.
 - [ ] Add all five RGB camera links, optical frames, intrinsics, and Gazebo plugins.
 - [ ] Replace placeholder arm/lift limits with measured range, velocity, and effort limits.
-- [ ] Verify wheel geometry and implement holonomic `/cmd_vel` mapping.
+- [~] Holonomic `/cmd_vel` mapping is implemented; verify/calibrate wheel geometry on hardware.
 - [ ] Implement wheel odometry and publish `odom → base_link`.
 - [ ] Inventory the real bus topology, servo IDs, signs, gear ratios, and LeRobot interfaces.
 - [ ] Complete the shared ROS/TF interface contract above.

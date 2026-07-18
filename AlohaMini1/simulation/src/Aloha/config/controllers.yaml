@@ -1,19 +1,16 @@
 # ros2_control configuration for AlohaMini1 in Gazebo (gz_ros2_control).
 #
 # The controller_manager is hosted inside the Gazebo process by the
-# gz_ros2_control-system plugin declared in urdf/Aloha.urdf. The launch file
-# spawns each controller listed here.
+# gz_ros2_control-system plugin composed by urdf/aloha_sim.urdf.xacro. The
+# launch file spawns each controller listed here.
 #
 #   joint_state_broadcaster   publishes /joint_states for all joints
-#   wheel_velocity_controller drives the three omni wheels (velocity command)
+#   omni_base_controller maps body velocity commands to the three omni wheels
+#                        and publishes wheel odometry
 #   left_arm_controller       6-DOF left arm  (position trajectory)
 #   right_arm_controller      6-DOF right arm (position trajectory)
 #   lift_controller           prismatic vertical lift (position)
 #
-# NOTE: there is no upstream 3-wheel omni-drive controller, so the base is
-# controlled per-wheel. A holonomic (vx, vy, wz) -> wheel-speed mapping would
-# need a small kinematics node or a custom controller (follow-up work).
-
 controller_manager:
   ros__parameters:
     update_rate: 100  # Hz
@@ -22,8 +19,8 @@ controller_manager:
     joint_state_broadcaster:
       type: joint_state_broadcaster/JointStateBroadcaster
 
-    wheel_velocity_controller:
-      type: velocity_controllers/JointGroupVelocityController
+    omni_base_controller:
+      type: omni_wheel_drive_controller/OmniWheelDriveController
 
     left_arm_controller:
       type: joint_trajectory_controller/JointTrajectoryController
@@ -34,12 +31,27 @@ controller_manager:
     lift_controller:
       type: joint_trajectory_controller/JointTrajectoryController
 
-wheel_velocity_controller:
+omni_base_controller:
   ros__parameters:
-    joints:
-      - wheel1_joint
+    # The controller requires counter-clockwise order. wheel2 is the first
+    # wheel at +0.51459 rad from base_link +X, followed by wheel1 and wheel3.
+    wheel_names:
       - wheel2_joint
+      - wheel1_joint
       - wheel3_joint
+    wheel_offset: 0.51459
+    robot_radius: 0.17878
+    wheel_radius: 0.0495
+    open_loop: false
+    position_feedback: true
+    enable_odom_tf: true
+    odom_frame_id: odom
+    base_frame_id: base_link
+    tf_frame_prefix_enable: false
+    cmd_vel_timeout: 0.5
+    diagonal_covariance:
+      pose: [0.001, 0.001, 0.001, 0.001, 0.001, 0.01]
+      twist: [0.001, 0.001, 0.001, 0.001, 0.001, 0.01]
 
 left_arm_controller:
   ros__parameters:

@@ -163,7 +163,7 @@ configured by [`config/controllers.yaml`](src/Aloha/config/controllers.yaml).
 | Controller | Type | Joints | Command |
 | --- | --- | --- | --- |
 | `joint_state_broadcaster` | broadcaster | all | publishes `/joint_states` |
-| `wheel_velocity_controller` | `JointGroupVelocityController` | `wheel1/2/3_joint` | wheel speed (rad/s) |
+| `omni_base_controller` | `OmniWheelDriveController` | `wheel1/2/3_joint` | body twist → wheel speed |
 | `left_arm_controller` | `JointTrajectoryController` | `left_joint1..6` | position |
 | `right_arm_controller` | `JointTrajectoryController` | `right_joint1..6` | position |
 | `lift_controller` | `JointTrajectoryController` | `vertical_move` | position |
@@ -179,9 +179,10 @@ source /opt/ros/jazzy/setup.bash && source /aloha_ws/install/setup.bash
 
 ros2 control list_controllers
 
-# Spin the three wheels (equal speeds rotate the omni base in place):
-ros2 topic pub -1 /wheel_velocity_controller/commands \
-  std_msgs/msg/Float64MultiArray '{data: [3.0, 3.0, 3.0]}'
+# Drive forward at 0.15 m/s. The controller maps the body twist to all three
+# wheel velocities and stops after 0.5 s if commands become stale.
+ros2 topic pub -r 10 /cmd_vel geometry_msgs/msg/TwistStamped \
+  '{header: {frame_id: base_link}, twist: {linear: {x: 0.15}}}'
 
 # Move the left arm to a pose:
 ros2 topic pub -1 /left_arm_controller/joint_trajectory \
@@ -190,11 +191,28 @@ ros2 topic pub -1 /left_arm_controller/joint_trajectory \
     points: [{positions: [0.5,0.0,0.0,0.0,0.0,0.0], time_from_start: {sec: 1}}]}'
 ```
 
-## Current Model Scope
+## Robot Description Layout
 
-The SolidWorks URDF includes visual meshes, collision meshes, masses, and
-inertias, plus a manually added `ros2_control` hardware description and the
-`gz_ros2_control` plugin (see [`urdf/Aloha.urdf`](src/Aloha/urdf/Aloha.urdf)).
+The model is composed from focused Xacro modules rather than one consumer-
+specific URDF:
+
+| File | Responsibility |
+| --- | --- |
+| `aloha_description.xacro` | Portable links, joints, visuals, collisions, and inertias |
+| `aloha_ros2_control.xacro` | Position/velocity command and state interfaces |
+| `aloha_gazebo.xacro` | Gazebo contact parameters and `gz_ros2_control` plugin |
+| `aloha_visual.urdf.xacro` | Visualization-only composition for RViz/Rerun |
+| `aloha_sim.urdf.xacro` | Complete Gazebo simulation composition |
+
+The build also expands `aloha_visual.urdf.xacro` into
+`install/aloha/share/aloha/urdf/Aloha.visual.urdf`. This generated file has no
+Gazebo or `ros2_control` extension tags and is the preferred input for strict
+URDF consumers such as Rerun.
+
+The Gazebo world selects Bullet Featherstone because the rigid omni-wheel
+collision approximation needs directional friction (`mu1`, `mu2`, and
+`fdir1`). The portable description remains independent of that simulation
+choice.
 
 The wheel joints use the ROS names `wheel1_joint`, `wheel2_joint`, and
 `wheel3_joint`. They intentionally differ from their child-link names because
@@ -208,12 +226,12 @@ Gazebo requires joint and link frame names to be unique.
 > real servos** before relying on them — do not infer limits from the mesh
 > geometry.
 
-Two other items remain approximate and are follow-up work:
+Two model items remain approximate and are follow-up work:
 
-- **Omni base kinematics.** There is no upstream 3-wheel omni-drive controller,
-  so the base is driven per wheel via `wheel_velocity_controller`. A holonomic
-  `(vx, vy, wz)` → wheel-speed mapping needs a small kinematics node or a custom
-  controller.
+- **Omni base geometry.** The controller parameters are derived from the CAD:
+  `0.0495 m` wheel radius, `0.17878 m` center-to-wheel radius, and `0.51459 rad`
+  first-wheel offset. Calibrate these values against the assembled robot before
+  relying on wheel odometry.
 - **Servo dynamics.** Effort/velocity limits and any gearing/PID behaviour are
   placeholders, not matched to the physical drivetrain.
 
@@ -251,11 +269,6 @@ Two other items remain approximate and are follow-up work:
   `6081:6080`, then open port 6081.
 - Rebuild after source changes with
   `docker compose build --no-cache gazebo`.
-
-## Legacy ROS 1 Files
-
-`launch/gazebo.launch` and `launch/display.launch` are retained from the
-original ROS 1 package. ROS 2 uses the `.launch.py` files.
 
 ## Acknowledgements
 

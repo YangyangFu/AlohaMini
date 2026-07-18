@@ -17,6 +17,7 @@ endif()
  
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_program(XACRO_EXECUTABLE xacro REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
@@ -33,8 +34,23 @@ if(BUILD_TESTING)
 endif()
  
  
+set(VISUAL_URDF "${CMAKE_CURRENT_BINARY_DIR}/Aloha.visual.urdf")
+add_custom_command(
+  OUTPUT "${VISUAL_URDF}"
+  COMMAND "${XACRO_EXECUTABLE}"
+          "${CMAKE_CURRENT_SOURCE_DIR}/urdf/aloha_visual.urdf.xacro"
+          -o "${VISUAL_URDF}"
+  DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/urdf/aloha_visual.urdf.xacro"
+    "${CMAKE_CURRENT_SOURCE_DIR}/urdf/aloha_description.xacro"
+  COMMENT "Generating portable visualization URDF"
+  VERBATIM
+)
+add_custom_target(generate_visual_urdf ALL DEPENDS "${VISUAL_URDF}")
+
 install(DIRECTORY
   meshes urdf textures config launch rviz worlds
   DESTINATION share/${PROJECT_NAME}/
 )
+install(FILES "${VISUAL_URDF}" DESTINATION share/${PROJECT_NAME}/urdf)
 ament_package()

@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<robot name="Aloha" xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <xacro:arg name="controllers_file"
+             default="$(find aloha)/config/controllers.yaml"/>
+
+  <xacro:include filename="aloha_description.xacro"/>
+  <xacro:include filename="aloha_ros2_control.xacro"/>
+  <xacro:include filename="aloha_gazebo.xacro"/>
+
+  <xacro:aloha_description/>
+  <xacro:aloha_ros2_control
+    hardware_plugin="gz_ros2_control/GazeboSimSystem"/>
+  <xacro:aloha_gazebo controllers_file="$(arg controllers_file)"/>
+</robot>

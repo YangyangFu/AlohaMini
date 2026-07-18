@@ -1,0 +1,50 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+  <!-- The command interfaces are the sim/real contract. A future Pi hardware
+       composition can reuse the joint list and select its own hardware plugin. -->
+  <xacro:macro name="aloha_ros2_control" params="hardware_plugin">
+    <ros2_control name="AlohaMiniSystem" type="system">
+      <hardware>
+        <plugin>${hardware_plugin}</plugin>
+      </hardware>
+
+      <joint name="wheel1_joint">
+        <command_interface name="velocity"/>
+        <state_interface name="position"/>
+        <state_interface name="velocity"/>
+      </joint>
+      <joint name="wheel2_joint">
+        <command_interface name="velocity"/>
+        <state_interface name="position"/>
+        <state_interface name="velocity"/>
+      </joint>
+      <joint name="wheel3_joint">
+        <command_interface name="velocity"/>
+        <state_interface name="position"/>
+        <state_interface name="velocity"/>
+      </joint>
+
+      <xacro:macro name="position_controlled_joint" params="name">
+        <joint name="${name}">
+          <command_interface name="position"/>
+          <state_interface name="position"/>
+          <state_interface name="velocity"/>
+        </joint>
+      </xacro:macro>
+
+      <xacro:position_controlled_joint name="vertical_move"/>
+      <xacro:position_controlled_joint name="left_joint1"/>
+      <xacro:position_controlled_joint name="left_joint2"/>
+      <xacro:position_controlled_joint name="left_joint3"/>
+      <xacro:position_controlled_joint name="left_joint4"/>
+      <xacro:position_controlled_joint name="left_joint5"/>
+      <xacro:position_controlled_joint name="left_joint6"/>
+      <xacro:position_controlled_joint name="right_joint1"/>
+      <xacro:position_controlled_joint name="right_joint2"/>
+      <xacro:position_controlled_joint name="right_joint3"/>
+      <xacro:position_controlled_joint name="right_joint4"/>
+      <xacro:position_controlled_joint name="right_joint5"/>
+      <xacro:position_controlled_joint name="right_joint6"/>
+    </ros2_control>
+  </xacro:macro>
+</robot>

@@ -1,4 +1,5 @@
 import os
+import xacro
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch_ros.actions import Node
@@ -7,15 +8,13 @@ def generate_launch_description():
     # 获取包的目录
     bringup_dir = get_package_share_directory('aloha')
     
-    # URDF 文件路径
-    urdf_path = os.path.join(bringup_dir, 'urdf', 'Aloha.urdf')
+    # Portable visualization description (no Gazebo or ros2_control tags).
+    xacro_path = os.path.join(bringup_dir, 'urdf', 'aloha_visual.urdf.xacro')
     
     # RViz 配置文件路径
     rviz_config_path = os.path.join(bringup_dir, 'rviz', 'urdf.rviz')
     
-    # 读取 URDF 文件
-    with open(urdf_path, 'r') as f:
-        robot_description = f.read()
+    robot_description = xacro.process_file(xacro_path).toxml()
     
     # 创建节点
     robot_state_publisher = Node(
