@@ -192,11 +192,12 @@ The initial panel provides:
   status.
 
 The lift control displays height above the mechanical bottom from `0.00` to
-`0.60 m`. The underlying `vertical_move` joint keeps the CAD assembly pose as
-`q=0`, so its signed URDF interval is `-0.40` to `+0.20 m`; UI height and joint
-position are related by `height = q + 0.40 m`. These endpoints follow the
-documented 60 cm travel and CAD geometry, but still require validation against
-the assembled hardware during calibration.
+`0.60 m`. The underlying `vertical_move` joint uses the same bottom-relative
+coordinate: `q=0` is the mechanical bottom and positive motion raises the
+lift. At `q=0.40 m` its geometry matches the original CAD assembly pose;
+Gazebo starts at the canonical bottom pose. The endpoints follow the documented
+60 cm travel but still require validation against the assembled hardware during
+calibration.
 
 This is currently a simulation convention, not a hardware home definition.
 The published AlohaMini1 lift utility drives servo velocity and stops on
@@ -285,11 +286,11 @@ ros2 topic pub -1 /left_arm_controller/joint_trajectory \
   '{joint_names: [left_joint1,left_joint2,left_joint3,left_joint4,left_joint5],
     points: [{positions: [0.5,0.0,0.0,0.0,0.0], time_from_start: {sec: 1}}]}'
 
-# Command the left moving jaw. Position is currently the uncalibrated CAD
-# joint angle, not a guaranteed finger gap in metres.
+# Command the left moving jaw: 0 rad is open and -1.57 rad is the provisional
+# CAD-derived closed endpoint (not a calibrated finger gap in metres).
 ros2 action send_goal /left_gripper_controller/gripper_cmd \
   control_msgs/action/ParallelGripperCommand \
-  '{command: {position: [0.2]}}'
+  '{command: {name: [left_joint6], position: [-1.57]}}'
 ```
 
 ## Robot Description Layout
@@ -323,10 +324,13 @@ Gazebo requires joint and link frame names to be unique.
 
 > **Provisional joint limits.** The SolidWorks export left every arm, gripper,
 > and lift joint with zero-width limits (`lower="0" upper="0"`), which cannot
-> move in simulation. Arm and jaw limits remain clearly commented placeholders
-> (±3.14 rad). The lift uses the documented 0.60 m travel as the provisional
-> CAD-relative interval `[-0.40, +0.20] m`. Validate every endpoint against the
-> real mechanism before hardware use.
+> move in simulation. Arm limits remain clearly commented placeholders
+> (±3.14 rad). The grippers use the CAD-derived provisional interval
+> `[-1.57, 0.00] rad` (closed to open), and the lift uses the documented 0.60 m
+> travel as the bottom-relative interval `[0.00, 0.60] m`. Validate every
+> endpoint against the real mechanism before hardware use. Their URDF hard
+> stops include a 0.01 rad margin beyond the operator interval because DART can
+> pin a velocity-backed joint commanded exactly onto a hard limit.
 
 The SO-101 CAD export names each moving jaw `left_joint6` / `right_joint6`.
 They are controlled separately from the five arm joints through dedicated

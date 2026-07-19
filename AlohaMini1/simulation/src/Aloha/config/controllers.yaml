@@ -93,15 +93,19 @@ right_arm_controller:
 # The CAD export calls the moving jaws left_joint6 and right_joint6. Keep those
 # joint names until the physical bus/interface contract is frozen, but expose
 # them through semantic gripper action controllers instead of arm trajectories.
-# Endpoint, tolerance, velocity, effort, and stall calibration remain future
-# hardware work; the controller package defaults are used for now.
+# Hardware endpoint, velocity, effort, and stall calibration remain future
+# work. A tighter simulation goal tolerance lets the moving jaw reach the
+# provisional CAD-derived closed endpoint instead of stopping about 0.01 rad
+# short of it.
 left_gripper_controller:
   ros__parameters:
     joint: left_joint6
+    goal_tolerance: 0.001
 
 right_gripper_controller:
   ros__parameters:
     joint: right_joint6
+    goal_tolerance: 0.001
 
 lift_controller:
   ros__parameters:

@@ -23,13 +23,14 @@ class UiGateway(Node):
         "left": "left_joint6",
         "right": "right_joint6",
     }
-    # The operator commands height above the mechanical bottom. The URDF joint
-    # coordinate remains relative to the CAD-exported pose, which is 0.40 m
-    # above the bottom of the documented 0.60 m travel.
+    # The CAD assembly places the moving hook upright at q=0 (fully open).
+    # Rotating it -pi/2 folds it against the serrated static jaw. These are
+    # provisional simulation endpoints; hardware endpoints require calibration.
+    GRIPPER_POSITION_MIN = -1.57
+    GRIPPER_POSITION_MAX = 0.0
+    # vertical_move directly represents height above the mechanical bottom.
     LIFT_HEIGHT_MIN = 0.0
     LIFT_HEIGHT_MAX = 0.60
-    LIFT_JOINT_AT_BOTTOM = -0.40
-    LIFT_JOINT_AT_TOP = 0.20
 
     def __init__(self):
         super().__init__("ui_gateway")
@@ -122,23 +123,17 @@ class UiGateway(Node):
         height = self._clamp(
             message.data, self.LIFT_HEIGHT_MIN, self.LIFT_HEIGHT_MAX
         )
-        travel_fraction = (height - self.LIFT_HEIGHT_MIN) / (
-            self.LIFT_HEIGHT_MAX - self.LIFT_HEIGHT_MIN
-        )
-        position = self.LIFT_JOINT_AT_BOTTOM + travel_fraction * (
-            self.LIFT_JOINT_AT_TOP - self.LIFT_JOINT_AT_BOTTOM
-        )
         self.lift_publisher.publish(
             self._trajectory(
-                ["vertical_move"], [position], self.lift_trajectory_duration
+                ["vertical_move"], [height], self.lift_trajectory_duration
             )
         )
-        self._publish_status(
-            f"Sent lift height {height:.3f} m (joint {position:+.3f} m)"
-        )
+        self._publish_status(f"Sent lift height {height:.3f} m")
 
     def _gripper_target(self, side, message):
-        position = self._clamp(message.data, -3.14, 3.14)
+        position = self._clamp(
+            message.data, self.GRIPPER_POSITION_MIN, self.GRIPPER_POSITION_MAX
+        )
         client = self.gripper_clients[side]
         if not client.server_is_ready():
             self._publish_status(f"{side.capitalize()} gripper controller unavailable")

@@ -21,10 +21,6 @@ let driveTimer = null;
 let activeDriveButton = null;
 let latestJointPositions = {};
 
-// The lift slider is height above the mechanical bottom. vertical_move is a
-// signed CAD-relative coordinate whose bottom is -0.40 m.
-const liftJointToHeightOffset = 0.40;
-
 const jointTargetIds = {
   vertical_move: "target-lift",
   left_joint6: "target-left_gripper",
@@ -125,10 +121,7 @@ function updateJointState(message) {
     latestJointPositions[name] = position;
     const input = document.getElementById(jointTargetIds[name] || `target-${name}`);
     if (input && input.dataset.touched !== "true") {
-      const controlValue = name === "vertical_move"
-        ? position + liftJointToHeightOffset
-        : position;
-      input.value = String(controlValue);
+      input.value = String(position);
       updateSliderOutput(input);
     }
   });

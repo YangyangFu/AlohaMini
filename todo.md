@@ -114,7 +114,7 @@ Simulator ground truth may be used for labels, training, reset, and scoring, but
 
 - [~] Gripper CAD geometry, collisions, `ros2_control` interfaces, and dedicated action controllers exist; validate them and calibrate endpoints/contact behavior against the real follower grippers.
 - [~] Chest, head, and rear camera links, optical frames, provisional intrinsics, Gazebo sensors, and ROS bridges are implemented; add the two wrist cameras and replace provisional values after physical calibration.
-- [~] The lift now uses the documented 0.60 m travel with a CAD-relative `[-0.40, +0.20] m` joint interval; replace placeholder arm/gripper limits and validate lift endpoints, velocity, and effort on hardware.
+- [~] The lift now uses a bottom-relative `[0.00, 0.60] m` joint coordinate, with the original CAD pose represented by `0.40 m`; replace placeholder arm/gripper limits and validate lift homing/backoff, endpoints, velocity, and effort on hardware.
 - [~] Holonomic `/cmd_vel` mapping is implemented; verify/calibrate wheel geometry on hardware.
 - [~] Simulation wheel odometry and `odom → base_link` are implemented; expose real encoder feedback through the Raspberry Pi hardware adapter and validate/calibrate hardware odometry.
 - [ ] Inventory the real bus topology, servo IDs, signs, gear ratios, and LeRobot interfaces.

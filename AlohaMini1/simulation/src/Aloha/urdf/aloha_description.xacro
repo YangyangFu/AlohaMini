@@ -266,7 +266,7 @@
     name="vertical_move"
     type="prismatic">
     <origin
-      xyz="-0.001045 -0.067891 0.064"
+      xyz="-0.001045 -0.0678985204 -0.336"
       rpy="0 0 0" />
     <parent
       link="base_cad_link" />
@@ -274,13 +274,13 @@
       link="vertical_link" />
     <axis
       xyz="0 1.8801E-05 1" />
-    <!-- The CAD assembly pose is the joint's q=0 reference, not the mechanical
-         bottom. The documented 0.60 m lift travel spans 0.40 m below that CAD
-         pose and 0.20 m above it. Verify the endpoints, effort, and velocity
-         against the assembled hardware during calibration. -->
+    <!-- q is height above the mechanical bottom: q=0 is the bottom and
+         positive motion raises the lift. Moving this joint origin 0.40 m down
+         its axis preserves the exported CAD assembly at q=0.40 m. Verify the
+         usable endpoints, effort, and velocity on assembled hardware. -->
     <limit
-      lower="-0.40"
-      upper="0.20"
+      lower="0.0"
+      upper="0.60"
       effort="100.0"
       velocity="0.5" />
   </joint>
@@ -699,13 +699,13 @@
       link="left_link6" />
     <axis
       xyz="-0.999889727846743 0.0120164296808642 -0.00872568417324989" />
-    <!-- PLACEHOLDER limit: the SolidWorks export left this joint zero-width.
-         Replace lower/upper/effort/velocity with values measured from the real
-         servo before relying on this for anything quantitative. Nonzero limits
-         are required so the position controller can actually move the joint. -->
+    <!-- Operator endpoints derived from the CAD jaw geometry are q=0 (open)
+         and q=-1.57 (closed). Keep the simulation hard stops 0.01 rad beyond
+         them so DART does not pin the velocity-backed joint at either endpoint.
+         Replace these limits with calibrated endpoints for real hardware. -->
     <limit
-      lower="-3.14159"
-      upper="3.14159"
+      lower="-1.58"
+      upper="0.01"
       effort="50.0"
       velocity="3.0" />
   </joint>
@@ -1124,13 +1124,13 @@
       link="right_link6" />
     <axis
       xyz="-0.999889727846743 0.0120164296808642 -0.00872568417324984" />
-    <!-- PLACEHOLDER limit: the SolidWorks export left this joint zero-width.
-         Replace lower/upper/effort/velocity with values measured from the real
-         servo before relying on this for anything quantitative. Nonzero limits
-         are required so the position controller can actually move the joint. -->
+    <!-- Operator endpoints derived from the CAD jaw geometry are q=0 (open)
+         and q=-1.57 (closed). Keep the simulation hard stops 0.01 rad beyond
+         them so DART does not pin the velocity-backed joint at either endpoint.
+         Replace these limits with calibrated endpoints for real hardware. -->
     <limit
-      lower="-3.14159"
-      upper="3.14159"
+      lower="-1.58"
+      upper="0.01"
       effort="50.0"
       velocity="3.0" />
   </joint>

@@ -26,7 +26,7 @@
     <aside class="safety-banner">
       <strong>Engineering MVP:</strong> base buttons are hold-to-run. The red
       button only stops ROS base commands; it is not a physical emergency stop.
-      Joint limits and gripper endpoints are still uncalibrated.
+      Hardware joint limits and gripper endpoints are still uncalibrated.
     </aside>
 
     <main>
@@ -139,19 +139,19 @@
       <section class="panel auxiliary-panel">
         <div class="section-heading">
           <div><p class="eyebrow">Position commands</p><h2>Lift and grippers</h2></div>
-          <span class="hint">Lift height is measured from bottom; gripper angles are uncalibrated</span>
+          <span class="hint">Lift is bottom-relative; grippers: 0 open, −1.57 rad closed</span>
         </div>
         <div class="auxiliary-grid">
           <div class="auxiliary-control">
-            <label class="slider-row" for="target-lift"><span>Lift height</span><input id="target-lift" data-joint="vertical_move" type="range" min="0" max="0.6" value="0.4" step="0.005"><output>0.400 m</output></label>
+            <label class="slider-row" for="target-lift"><span>Lift height</span><input id="target-lift" data-joint="vertical_move" type="range" min="0" max="0.6" value="0" step="0.005"><output>0.000 m</output></label>
             <button class="send-button" id="send-lift">Send lift</button>
           </div>
           <div class="auxiliary-control">
-            <label class="slider-row" for="target-left_gripper"><span>Left jaw</span><input id="target-left_gripper" data-joint="left_joint6" type="range" min="-0.8" max="0.8" value="0" step="0.01"><output>0.00 rad</output></label>
+            <label class="slider-row" for="target-left_gripper"><span>Left jaw</span><input id="target-left_gripper" data-joint="left_joint6" type="range" min="-1.57" max="0" value="0" step="0.01"><output>0.00 rad</output></label>
             <button class="send-button" data-send-gripper="left">Send left jaw</button>
           </div>
           <div class="auxiliary-control">
-            <label class="slider-row" for="target-right_gripper"><span>Right jaw</span><input id="target-right_gripper" data-joint="right_joint6" type="range" min="-0.8" max="0.8" value="0" step="0.01"><output>0.00 rad</output></label>
+            <label class="slider-row" for="target-right_gripper"><span>Right jaw</span><input id="target-right_gripper" data-joint="right_joint6" type="range" min="-1.57" max="0" value="0" step="0.01"><output>0.00 rad</output></label>
             <button class="send-button" data-send-gripper="right">Send right jaw</button>
           </div>
         </div>
