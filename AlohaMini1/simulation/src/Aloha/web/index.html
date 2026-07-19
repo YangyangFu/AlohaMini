@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' http: data:; connect-src 'self' ws: wss:; style-src 'self'; script-src 'self'"
+    >
+    <title>AlohaMini Operator Panel</title>
+    <link rel="stylesheet" href="style.css">
+    <script defer src="app.js"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">ROS 2 operator interface</p>
+        <h1>AlohaMini</h1>
+      </div>
+      <div class="connection" aria-live="polite">
+        <span id="connection-dot" class="connection-dot"></span>
+        <span id="connection-label">Connecting to ROS…</span>
+      </div>
+    </header>
+
+    <aside class="safety-banner">
+      <strong>Engineering MVP:</strong> base buttons are hold-to-run. The red
+      button only stops ROS base commands; it is not a physical emergency stop.
+      Joint limits and gripper endpoints are still uncalibrated.
+    </aside>
+
+    <main>
+      <section class="panel camera-panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Live perception</p>
+            <h2>Base cameras</h2>
+          </div>
+          <span class="hint">MJPEG from ROS image topics</span>
+        </div>
+        <div class="camera-grid">
+          <figure class="camera-card">
+            <img data-camera-topic="/cameras/chest/image_raw" alt="Chest camera stream">
+            <figcaption><strong>Chest</strong><span>front · lift-mounted</span></figcaption>
+          </figure>
+          <figure class="camera-card">
+            <img data-camera-topic="/cameras/head/image_raw" alt="Head camera stream">
+            <figcaption><strong>Head</strong><span>front · downward</span></figcaption>
+          </figure>
+          <figure class="camera-card">
+            <img data-camera-topic="/cameras/rear/image_raw" alt="Rear camera stream">
+            <figcaption><strong>Rear</strong><span>rear · downward</span></figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <div class="dashboard-grid">
+        <section class="panel base-panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Hold to move · robot frame</p>
+              <h2>Omni base</h2>
+            </div>
+            <output id="base-command">vx 0.00 · vy 0.00 · ω 0.00</output>
+          </div>
+
+          <div class="drive-grid" aria-label="Base motion controls">
+            <button class="drive-button rotate" data-wz="0.6">↶<span>Yaw left</span></button>
+            <button class="drive-button" data-vx="0.2">↑<span>Forward</span></button>
+            <button class="drive-button rotate" data-wz="-0.6">↷<span>Yaw right</span></button>
+            <button class="drive-button" data-vy="0.2">←<span>Left</span></button>
+            <button id="base-stop" class="stop-button">■<span>STOP BASE</span></button>
+            <button class="drive-button" data-vy="-0.2">→<span>Right</span></button>
+            <span></span>
+            <button class="drive-button" data-vx="-0.2">↓<span>Reverse</span></button>
+            <span></span>
+          </div>
+
+          <label class="slider-row speed-row" for="speed-scale">
+            <span>Speed scale</span>
+            <input id="speed-scale" type="range" min="0.1" max="1" value="0.5" step="0.1">
+            <output id="speed-scale-value">50%</output>
+          </label>
+        </section>
+
+        <section class="panel feedback-panel">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">ROS feedback</p>
+              <h2>Robot state</h2>
+            </div>
+          </div>
+          <dl class="pose-grid">
+            <div><dt>Odom X</dt><dd id="odom-x">—</dd></div>
+            <div><dt>Odom Y</dt><dd id="odom-y">—</dd></div>
+            <div><dt>Yaw</dt><dd id="odom-yaw">—</dd></div>
+          </dl>
+          <h3>Latest status</h3>
+          <ol id="status-log" class="status-log" aria-live="polite">
+            <li>Waiting for ROS feedback…</li>
+          </ol>
+          <details>
+            <summary>Joint positions</summary>
+            <pre id="joint-state">No joint state received.</pre>
+          </details>
+        </section>
+      </div>
+
+      <div class="arm-grid">
+        <section class="panel arm-panel" data-side="left">
+          <div class="section-heading">
+            <div><p class="eyebrow">Position trajectory</p><h2>Left arm</h2></div>
+            <button class="send-button" data-send-arm="left">Send target</button>
+          </div>
+          <div class="joint-sliders">
+            <label class="slider-row" for="target-left_joint1"><span>Joint 1</span><input id="target-left_joint1" data-arm="left" data-joint="left_joint1" type="range" min="-3.14" max="3.14" value="0" step="0.01"><output>0.00</output></label>
+            <label class="slider-row" for="target-left_joint2"><span>Joint 2</span><input id="target-left_joint2" data-arm="left" data-joint="left_joint2" type="range" min="-3.14" max="3.14" value="0" step="0.01"><output>0.00</output></label>
+            <label class="slider-row" for="target-left_joint3"><span>Joint 3</span><input id="target-left_joint3" data-arm="left" data-joint="left_joint3" type="range" min="-3.14" max="3.14" value="0" step="0.01"><output>0.00</output></label>
+            <label class="slider-row" for="target-left_joint4"><span>Joint 4</span><input id="target-left_joint4" data-arm="left" data-joint="left_joint4" type="range" min="-3.14" max="3.14" value="0" step="0.01"><output>0.00</output></label>
+            <label class="slider-row" for="target-left_joint5"><span>Joint 5</span><input id="target-left_joint5" data-arm="left" data-joint="left_joint5" type="range" min="-3.14" max="3.14" value="0" step="0.01"><output>0.00</output></label>
+          </div>
+        </section>
+
+        <section class="panel arm-panel" data-side="right">
+          <div class="section-heading">
+            <div><p class="eyebrow">Position trajectory</p><h2>Right arm</h2></div>
+            <button class="send-button" data-send-arm="right">Send target</button>
+          </div>
+          <div class="joint-sliders">
+            <label class="slider-row" for="target-right_joint1"><span>Joint 1</span><input id="target-right_joint1" data-arm="right" data-joint="right_joint1" type="range" min="-3.14" max="3.14" value="0" step="0.01"><output>0.00</output></label>
+            <label class="slider-row" for="target-right_joint2"><span>Joint 2</span><input id="target-right_joint2" data-arm="right" data-joint="right_joint2" type="range" min="-3.14" max="3.14" value="0" step="0.01"><output>0.00</output></label>
+            <label class="slider-row" for="target-right_joint3"><span>Joint 3</span><input id="target-right_joint3" data-arm="right" data-joint="right_joint3" type="range" min="-3.14" max="3.14" value="0" step="0.01"><output>0.00</output></label>
+            <label class="slider-row" for="target-right_joint4"><span>Joint 4</span><input id="target-right_joint4" data-arm="right" data-joint="right_joint4" type="range" min="-3.14" max="3.14" value="0" step="0.01"><output>0.00</output></label>
+            <label class="slider-row" for="target-right_joint5"><span>Joint 5</span><input id="target-right_joint5" data-arm="right" data-joint="right_joint5" type="range" min="-3.14" max="3.14" value="0" step="0.01"><output>0.00</output></label>
+          </div>
+        </section>
+      </div>
+
+      <section class="panel auxiliary-panel">
+        <div class="section-heading">
+          <div><p class="eyebrow">Position commands</p><h2>Lift and grippers</h2></div>
+          <span class="hint">Lift height is measured from bottom; gripper angles are uncalibrated</span>
+        </div>
+        <div class="auxiliary-grid">
+          <div class="auxiliary-control">
+            <label class="slider-row" for="target-lift"><span>Lift height</span><input id="target-lift" data-joint="vertical_move" type="range" min="0" max="0.6" value="0.4" step="0.005"><output>0.400 m</output></label>
+            <button class="send-button" id="send-lift">Send lift</button>
+          </div>
+          <div class="auxiliary-control">
+            <label class="slider-row" for="target-left_gripper"><span>Left jaw</span><input id="target-left_gripper" data-joint="left_joint6" type="range" min="-0.8" max="0.8" value="0" step="0.01"><output>0.00 rad</output></label>
+            <button class="send-button" data-send-gripper="left">Send left jaw</button>
+          </div>
+          <div class="auxiliary-control">
+            <label class="slider-row" for="target-right_gripper"><span>Right jaw</span><input id="target-right_gripper" data-joint="right_joint6" type="range" min="-0.8" max="0.8" value="0" step="0.01"><output>0.00 rad</output></label>
+            <button class="send-button" data-send-gripper="right">Send right jaw</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      Use RViz for TF, maps, odometry, perception, and planned paths. Use Gazebo
+      for simulated world and contact debugging.
+    </footer>
+  </body>
+</html>

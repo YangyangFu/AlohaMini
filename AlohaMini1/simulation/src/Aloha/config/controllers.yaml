@@ -11,7 +11,7 @@
 #   right_arm_controller      5-DOF right arm (position trajectory)
 #   left_gripper_controller   left moving jaw (position action)
 #   right_gripper_controller  right moving jaw (position action)
-#   lift_controller           prismatic vertical lift (position)
+#   lift_controller           prismatic vertical lift (effort PID trajectory)
 #
 controller_manager:
   ros__parameters:
@@ -41,13 +41,14 @@ controller_manager:
 
 omni_base_controller:
   ros__parameters:
-    # The controller requires counter-clockwise order. wheel2 is the first
-    # wheel at +0.51459 rad from base_link +X, followed by wheel1 and wheel3.
+    # Counter-clockwise wheel order in the ROS-aligned base_link frame. The
+    # CAD chassis is rotated +pi/2 because its -Y axis is the robot's front,
+    # so the former +0.51459 rad offset becomes +2.08538632679 rad.
     wheel_names:
       - wheel2_joint
       - wheel1_joint
       - wheel3_joint
-    wheel_offset: 0.51459
+    wheel_offset: 2.08538632679
     robot_radius: 0.17878
     wheel_radius: 0.0495
     open_loop: false
@@ -107,7 +108,20 @@ lift_controller:
     joints:
       - vertical_move
     command_interfaces:
-      - position
+      - effort
     state_interfaces:
       - position
       - velocity
+    # DART's velocity-backed position interface can become pinned at a hard
+    # prismatic limit on this gravity-loaded assembly. Use a bounded effort PID
+    # so the simulated actuator can raise and hold the 2.76 kg moving subtree.
+    # These gains are simulation parameters, not physical motor calibration.
+    gains:
+      vertical_move:
+        p: 3000.0
+        i: 500.0
+        d: 200.0
+        i_clamp_max: 50.0
+        i_clamp_min: -50.0
+        u_clamp_max: 100.0
+        u_clamp_min: -100.0

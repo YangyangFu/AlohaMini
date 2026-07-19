@@ -92,8 +92,8 @@ Simulator ground truth may be used for labels, training, reset, and scoring, but
 
 ### Required TF and interface contract
 
-- [~] Freeze the TF tree: `map → odom → base_link`, wheel frames, lift, arm/tool frames, and five optical frames; the three base-camera optical frames now exist, while wrist frames and the final contract remain.
-- [ ] Freeze normalized base commands: `vx`, `vy`, and `yaw` velocity.
+- [~] Freeze the TF tree: `map → odom → base_link → base_cad_link`, wheel frames, lift, arm/tool frames, and five optical frames; the ROS base is now chest-forward while wrist frames and the final contract remain.
+- [~] Normalized base commands now use robot-relative `vx` forward (chest-facing), `vy` left, and positive counter-clockwise yaw; verify the same convention in the Raspberry Pi adapter.
 - [ ] Define lift, arm, gripper, mode, stop, control-ownership, and release-confirmation interfaces.
 - [ ] Define localization, perception, reachability, grasp-retention, and recipient status messages.
 - [ ] Define command timestamps, confidence fields, timeout behavior, and structured failure codes.
@@ -114,7 +114,7 @@ Simulator ground truth may be used for labels, training, reset, and scoring, but
 
 - [~] Gripper CAD geometry, collisions, `ros2_control` interfaces, and dedicated action controllers exist; validate them and calibrate endpoints/contact behavior against the real follower grippers.
 - [~] Chest, head, and rear camera links, optical frames, provisional intrinsics, Gazebo sensors, and ROS bridges are implemented; add the two wrist cameras and replace provisional values after physical calibration.
-- [ ] Replace placeholder arm, gripper, and lift limits with measured range, velocity, and effort limits.
+- [~] The lift now uses the documented 0.60 m travel with a CAD-relative `[-0.40, +0.20] m` joint interval; replace placeholder arm/gripper limits and validate lift endpoints, velocity, and effort on hardware.
 - [~] Holonomic `/cmd_vel` mapping is implemented; verify/calibrate wheel geometry on hardware.
 - [~] Simulation wheel odometry and `odom → base_link` are implemented; expose real encoder feedback through the Raspberry Pi hardware adapter and validate/calibrate hardware odometry.
 - [ ] Inventory the real bus topology, servo IDs, signs, gear ratios, and LeRobot interfaces.
@@ -130,10 +130,10 @@ Simulator ground truth may be used for labels, training, reset, and scoring, but
 
 #### Operator and safety layer
 
-- [ ] Implement normalized manual commands for base, lift, arms, grippers, speed scale, and stop.
+- [~] A browser MVP commands base, lift, arms, grippers, speed scale, and software base stop; freeze normalized command semantics and add conformance tests before hardware use.
 - [ ] Implement gamepad control with holonomic translation, yaw, lift, speed mode, and deadman.
 - [ ] Implement keyboard fallback for base, yaw, lift, and stop.
-- [ ] Implement the browser UI with control ownership, connection state, camera preview, battery/controller state, localization, limits, and faults.
+- [~] The browser UI now has connection state, three camera previews, base/arm/lift/gripper controls, joint feedback, and odometry; add ownership, battery/controller health, localization confidence, calibrated limits, and faults.
 - [ ] Prevent simultaneous command ownership by multiple clients.
 - [ ] Add timestamps, watchdogs, deadman gating, rate/acceleration limits, and a latched fault state.
 - [ ] Record operator inputs with synchronized observations and robot state.

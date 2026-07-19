@@ -1,7 +1,10 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
-  <!-- The command interfaces are the sim/real contract. A future Pi hardware
-       composition can reuse the joint list and select its own hardware plugin. -->
+  <!-- A future Pi hardware composition can reuse the joint names while
+       selecting command interfaces that match the real actuators. The
+       gravity-loaded simulated lift uses effort so DART can raise and hold
+       it; the physical lift currently exposes velocity control and requires
+       homing/calibration before it can implement this position contract. -->
   <xacro:macro name="aloha_ros2_control" params="hardware_plugin">
     <ros2_control name="AlohaMiniSystem" type="system">
       <hardware>
@@ -32,7 +35,11 @@
         </joint>
       </xacro:macro>
 
-      <xacro:position_controlled_joint name="vertical_move"/>
+      <joint name="vertical_move">
+        <command_interface name="effort"/>
+        <state_interface name="position"/>
+        <state_interface name="velocity"/>
+      </joint>
       <xacro:position_controlled_joint name="left_joint1"/>
       <xacro:position_controlled_joint name="left_joint2"/>
       <xacro:position_controlled_joint name="left_joint3"/>

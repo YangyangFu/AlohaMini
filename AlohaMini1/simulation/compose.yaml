@@ -6,6 +6,8 @@ services:
     image: alohamini1-gazebo:jazzy
     ports:
       - "127.0.0.1:6080:6080"
+      - "127.0.0.1:8000:8000"  # operator UI
+      - "127.0.0.1:9090:9090"  # rosbridge WebSocket
     environment:
       VNC_RESOLUTION: "${VNC_RESOLUTION:-1920x1080x24}"
       VNC_USER: "${VNC_USER:-kasm}"
@@ -29,6 +31,9 @@ services:
       DISPLAY: "${DISPLAY:-host.docker.internal:0}"
       # Software OpenGL avoids XQuartz indirect-GLX failures with modern Gazebo.
       LIBGL_ALWAYS_SOFTWARE: "${LIBGL_ALWAYS_SOFTWARE:-1}"
+    ports:
+      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:9090:9090"
     volumes:
       # Used by Linux hosts; harmless when the service uses a TCP X server.
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
@@ -43,4 +48,7 @@ services:
     command: ["ros2", "launch", "aloha", "gazebo.launch.py", "gui:=false"]
     environment:
       LIBGL_ALWAYS_SOFTWARE: "1"
+    ports:
+      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:9090:9090"
     profiles: ["headless"]

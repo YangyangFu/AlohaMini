@@ -50,8 +50,13 @@ add_custom_command(
 add_custom_target(generate_visual_urdf ALL DEPENDS "${VISUAL_URDF}")
 
 install(DIRECTORY
-  meshes urdf textures config launch rviz worlds
+  meshes urdf textures config launch rviz web worlds
   DESTINATION share/${PROJECT_NAME}/
+)
+install(PROGRAMS
+  scripts/ui_gateway.py
+  scripts/ui_server.py
+  DESTINATION lib/${PROJECT_NAME}
 )
 install(FILES "${VISUAL_URDF}" DESTINATION share/${PROJECT_NAME}/urdf)
 ament_package()

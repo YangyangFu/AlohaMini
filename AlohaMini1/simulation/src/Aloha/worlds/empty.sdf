@@ -10,7 +10,10 @@
       filename="gz-sim-physics-system"
       name="gz::sim::systems::Physics">
       <engine>
-        <filename>gz-physics-bullet-featherstone-plugin</filename>
+        <!-- DART handles the directional primitive-wheel contacts used by
+             this three-wheel omni base; Bullet Featherstone lets the wheels
+             spin without transferring useful chassis motion. -->
+        <filename>gz-physics-dartsim-plugin</filename>
       </engine>
     </plugin>
     <plugin

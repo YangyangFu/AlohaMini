@@ -164,6 +164,71 @@ ros2 topic hz /cameras/head/image_raw
 ros2 topic echo --once /cameras/head/camera_info
 ```
 
+## Operator UI and Visualization
+
+The tools have different responsibilities:
+
+- **Browser UI:** operate the robot through deployable ROS interfaces and view
+  its three camera streams. This is the interface intended to evolve into the
+  workstation/phone operator client.
+- **RViz:** inspect the ROS-side robot model, TF, odometry, maps, perception,
+  goals, and planned paths. It works against both Gazebo and physical hardware.
+- **Gazebo GUI:** inspect the simulated world, contacts, collisions, and
+  physics. Do not make it the hardware control interface.
+
+The browser UI starts automatically with `gazebo.launch.py`. After starting any
+Compose simulation, open:
+
+<http://localhost:8000>
+
+The initial panel provides:
+
+- hold-to-run forward, reverse, lateral, and yaw commands with a speed scale;
+- a software base-stop button;
+- five position targets for each arm;
+- lift and left/right moving-jaw targets;
+- chest, head, and rear camera previews;
+- rosbridge connection state, wheel odometry, joint positions, and command
+  status.
+
+The lift control displays height above the mechanical bottom from `0.00` to
+`0.60 m`. The underlying `vertical_move` joint keeps the CAD assembly pose as
+`q=0`, so its signed URDF interval is `-0.40` to `+0.20 m`; UI height and joint
+position are related by `height = q + 0.40 m`. These endpoints follow the
+documented 60 cm travel and CAD geometry, but still require validation against
+the assembled hardware during calibration.
+
+This is currently a simulation convention, not a hardware home definition.
+The published AlohaMini1 lift utility drives servo velocity and stops on
+over-current; it does not report an absolute mechanical-bottom zero. A physical
+adapter therefore needs a homing procedure (or absolute position feedback)
+before accepting the UI's bottom-relative height command.
+
+Base commands are robot-relative, not Gazebo-world-relative: `+X` / Forward is
+the direction faced by the chest, `+Y` is robot-left, and positive yaw turns
+counter-clockwise. At the initial Gazebo pose, robot `+X` is aligned with world
+`+X`. The unmodified SolidWorks coordinate system is isolated behind the fixed
+`base_cad_link` frame so it cannot leak into controller or UI semantics.
+
+The UI is deliberately separate from Gazebo. Against a native or hardware ROS
+graph it can be started independently:
+
+```bash
+ros2 launch aloha ui.launch.py use_sim_time:=false
+```
+
+Its default endpoints are UI/camera video `8000` and rosbridge `9090`.
+Compose exposes both only on `127.0.0.1`. The standalone launch also binds
+to localhost by default. Do not expose rosbridge directly to an untrusted
+network; an authenticated/TLS gateway and command-ownership layer are still
+required before phone or remote operation.
+
+To run Gazebo without the web processes:
+
+```bash
+ros2 launch aloha gazebo.launch.py ui:=false
+```
+
 ## Native ROS 2 Use
 
 On an Ubuntu 24.04 machine with ROS 2 Jazzy and `ros_gz` installed:
@@ -195,7 +260,7 @@ configured by [`config/controllers.yaml`](src/Aloha/config/controllers.yaml).
 | `right_arm_controller` | `JointTrajectoryController` | `right_joint1..5` | position trajectory |
 | `left_gripper_controller` | `GripperActionController` | `left_joint6` moving jaw | position action |
 | `right_gripper_controller` | `GripperActionController` | `right_joint6` moving jaw | position action |
-| `lift_controller` | `JointTrajectoryController` | `vertical_move` | position |
+| `lift_controller` | `JointTrajectoryController` | `vertical_move` | effort PID (position trajectory) |
 
 Because a controller actively holds every joint, the base stays put instead of
 creeping across the floor as the earlier passive model did.
@@ -208,8 +273,9 @@ source /opt/ros/jazzy/setup.bash && source /aloha_ws/install/setup.bash
 
 ros2 control list_controllers
 
-# Drive forward at 0.15 m/s. The controller maps the body twist to all three
-# wheel velocities and stops after 0.5 s if commands become stale.
+# Drive toward the chest-facing side at 0.15 m/s (+X in base_link). The
+# controller maps the body twist to all three wheel velocities and stops after
+# 0.5 s if commands become stale.
 ros2 topic pub -r 10 /cmd_vel geometry_msgs/msg/TwistStamped \
   '{header: {frame_id: base_link}, twist: {linear: {x: 0.15}}}'
 
@@ -233,9 +299,9 @@ specific URDF:
 
 | File | Responsibility |
 | --- | --- |
-| `aloha_description.xacro` | Portable links, joints, visuals, collisions, and inertias |
+| `aloha_description.xacro` | Portable links, joints, visuals, collisions, inertias, and the ROS-to-CAD base-frame alignment |
 | `aloha_cameras.xacro` | Portable camera bodies, mount transforms, and optical frames |
-| `aloha_ros2_control.xacro` | Position/velocity command and state interfaces |
+| `aloha_ros2_control.xacro` | Position, velocity, and simulated lift-effort command/state interfaces |
 | `aloha_gazebo.xacro` | Gazebo contact parameters and `gz_ros2_control` plugin |
 | `aloha_gazebo_cameras.xacro` | Gazebo RGB sensors, provisional resolution, rate, and intrinsics |
 | `aloha_visual.urdf.xacro` | Visualization-only composition for RViz/Rerun |
@@ -255,13 +321,12 @@ The wheel joints use the ROS names `wheel1_joint`, `wheel2_joint`, and
 `wheel3_joint`. They intentionally differ from their child-link names because
 Gazebo requires joint and link frame names to be unique.
 
-> **Placeholder joint limits.** The SolidWorks export left every arm, gripper,
-> and lift joint with zero-width limits (`lower="0" upper="0"`), which
-> position control cannot move. They have been replaced with clearly commented **placeholder**
-> limits (±3.14 rad for the revolute arm and jaw joints; 0–0.20 m for the lift)
-> purely so the controllers function. **Replace these with values measured from
-> the real servos** before relying on them — do not infer limits from the mesh
-> geometry.
+> **Provisional joint limits.** The SolidWorks export left every arm, gripper,
+> and lift joint with zero-width limits (`lower="0" upper="0"`), which cannot
+> move in simulation. Arm and jaw limits remain clearly commented placeholders
+> (±3.14 rad). The lift uses the documented 0.60 m travel as the provisional
+> CAD-relative interval `[-0.40, +0.20] m`. Validate every endpoint against the
+> real mechanism before hardware use.
 
 The SO-101 CAD export names each moving jaw `left_joint6` / `right_joint6`.
 They are controlled separately from the five arm joints through dedicated

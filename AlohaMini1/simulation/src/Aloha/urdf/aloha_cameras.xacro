@@ -55,9 +55,10 @@
   </xacro:macro>
 
   <xacro:macro name="aloha_cameras">
-    <!-- CAD-derived provisional lens poses. The chest camera moves with the
-         lift carriage. The high head and rear cameras are fixed to base_link.
-         Replace only these origins after physical extrinsic calibration. -->
+    <!-- CAD-derived provisional lens poses. The fixed head/rear mounts are
+         expressed in the ROS-aligned base frame; the chest mount remains
+         relative to the CAD-aligned lift carriage and composes to face base
+         +X. Replace only these origins after physical extrinsic calibration. -->
     <xacro:aloha_camera
       name="chest"
       parent="vertical_link"
@@ -66,12 +67,12 @@
     <xacro:aloha_camera
       name="head"
       parent="base_link"
-      xyz="0 -0.102 1.064"
-      rpy="0 0.78539816339 -1.57079632679"/>
+      xyz="0.102 0 1.064"
+      rpy="0 0.78539816339 0"/>
     <xacro:aloha_camera
       name="rear"
       parent="base_link"
-      xyz="0 0.155 1.057"
-      rpy="0 0.63429 1.57079632679"/>
+      xyz="-0.155 0 1.057"
+      rpy="0 0.63429 3.14159265359"/>
   </xacro:macro>
 </robot>

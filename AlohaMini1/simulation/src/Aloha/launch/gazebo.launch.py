@@ -28,6 +28,7 @@ def generate_launch_description():
     ).toxml()
 
     gui = LaunchConfiguration("gui")
+    ui = LaunchConfiguration("ui")
 
     # The Gazebo GUI initializes its rendering scene asynchronously. This is
     # noticeably slower through X11 / software OpenGL, and a model inserted
@@ -70,6 +71,17 @@ def generate_launch_description():
                 "use_sim_time": True,
             }
         ],
+    )
+
+    operator_ui = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(package_share, "launch", "ui.launch.py")
+        ),
+        launch_arguments={
+            "bind_address": "0.0.0.0",
+            "use_sim_time": "true",
+        }.items(),
+        condition=IfCondition(ui),
     )
 
     gazebo_bridge = Node(
@@ -166,9 +178,15 @@ def generate_launch_description():
                 default_value="true",
                 description="Start the Gazebo graphical client.",
             ),
+            DeclareLaunchArgument(
+                "ui",
+                default_value="true",
+                description="Start the browser operator UI and ROS web bridges.",
+            ),
             gazebo,
             gazebo_headless,
             robot_state_publisher,
+            operator_ui,
             gazebo_bridge,
             TimerAction(period=startup_delay(12.0, 3.0), actions=[spawn_robot]),
             TimerAction(period=17.0, actions=[focus_robot]),
