@@ -2,7 +2,7 @@
 
 This document defines what must be measured on the real AlohaMini1 and matched
 in Gazebo or another simulator. It is based on the repository state inspected
-on 2026-07-20 and the companion `lerobot_alohamini` checkout at commit
+on 2026-07-21 and the companion `lerobot_alohamini` checkout at commit
 `8e3e1225`.
 
 Calibration should produce a versioned set of measured parameters and
@@ -65,6 +65,281 @@ look simpler.
 P0 and P1 errors create systematic bias and should be fixed directly. P2 and P3
 can be refined according to the task: a UI kinematics demo needs less dynamic
 fidelity than contact-rich learned manipulation.
+
+## AlohaMini1 motor runbook derived from LeKiwi
+
+This runbook adapts the [LeKiwi calibration
+procedure](https://huggingface-lerobot.mintlify.app/robots/lekiwi) and the
+[LeRobot Feetech motor calibration
+model](https://huggingface-lerobot.mintlify.app/motors/feetech) to the actual
+AlohaMini1 implementation. The key LeKiwi pattern is valid:
+
+1. put position-controlled joints near the middle of their physical range;
+2. establish their homing offsets;
+3. move each joint through its complete usable range and record the extrema;
+4. do not apply position-range calibration to velocity-controlled wheels.
+
+AlohaMini1 extends that pattern because it has two follower-arm buses, two
+grippers, a velocity-controlled lift that needs physical homing, and a base
+whose wheel geometry and velocity conversion still require calibration. The
+LeRobot interaction is therefore one stage of the full calibration, not the
+final result.
+
+### Motor inventory expected by the current code
+
+For `robot_model="alohamini1"`, the companion code declares every actuator as
+an STS3215. IDs are unique only within a bus, so the same arm IDs intentionally
+appear on both ports.
+
+| Bus | LeRobot motor name | ID | URDF mechanism | Runtime mode | LeRobot user representation |
+| --- | --- | ---: | --- | --- | --- |
+| Left | `arm_left_shoulder_pan` | 1 | `left_joint1` | Position | `[-100,100]`, or degrees when `use_degrees=true` |
+| Left | `arm_left_shoulder_lift` | 2 | `left_joint2` | Position | Same as above |
+| Left | `arm_left_elbow_flex` | 3 | `left_joint3` | Position | Same as above |
+| Left | `arm_left_wrist_flex` | 4 | `left_joint4` | Position | Same as above |
+| Left | `arm_left_wrist_roll` | 5 | `left_joint5` | Position | Same as above |
+| Left | `arm_left_gripper` | 6 | `left_joint6` moving jaw | Position | `[0,100]` |
+| Left | `base_left_wheel` | 8 | one wheel joint; mapping must be verified | Velocity | Raw signed speed internally |
+| Left | `base_back_wheel` | 9 | one wheel joint; mapping must be verified | Velocity | Raw signed speed internally |
+| Left | `base_right_wheel` | 10 | one wheel joint; mapping must be verified | Velocity | Raw signed speed internally |
+| Left | `lift_axis` | 11 | `vertical_move` | Velocity, under a Pi position loop | Height in mm at the public interface |
+| Right | `arm_right_shoulder_pan` | 1 | `right_joint1` | Position | `[-100,100]`, or degrees when `use_degrees=true` |
+| Right | `arm_right_shoulder_lift` | 2 | `right_joint2` | Position | Same as above |
+| Right | `arm_right_elbow_flex` | 3 | `right_joint3` | Position | Same as above |
+| Right | `arm_right_wrist_flex` | 4 | `right_joint4` | Position | Same as above |
+| Right | `arm_right_wrist_roll` | 5 | `right_joint5` | Position | Same as above |
+| Right | `arm_right_gripper` | 6 | `right_joint6` moving jaw | Position | `[0,100]` |
+
+Do not rely on the generic `sts3215` model string as the hardware identity.
+Record the exact SKU, rated voltage, gearbox, firmware, and supply voltage from
+each installed actuator. Feetech publishes multiple STS3215 variants. The
+[7.4 V STS3215 specification](https://www.feetechrc.com/Data/feetechrc/upload/file/20200611/6372749961523760249976542.pdf),
+for example, states 4096 counts/revolution, a 1:345 internal gearbox, no-load
+speeds of 42 RPM at 6 V and 52 RPM at 7.4 V, backlash up to 0.5 degrees, and
+voltage-dependent current/torque ratings. These are initial plausibility bounds,
+not substitutes for identifying and measuring the installed units.
+
+### What the LeRobot calibration file does and does not prove
+
+The default output is
+`$HF_LEROBOT_CALIBRATION/robots/alohamini/<robot-id>.json`; without an override,
+`$HF_LEROBOT_CALIBRATION` resolves under
+`$HF_HOME/lerobot/calibration`. Use a stable physical robot serial as
+`<robot-id>`, not a temporary experiment name.
+
+Each motor entry stores only:
+
+| Field | Meaning in the current Feetech implementation |
+| --- | --- |
+| `id` | Expected bus ID |
+| `homing_offset` | Offset written so the selected reference position reads at the encoder half turn |
+| `range_min`, `range_max` | Raw extrema observed during the interactive range sweep |
+| `drive_mode` | Optional normalized-direction inversion; current AlohaMini1 calibration writes `0` for every motor |
+
+For normal AlohaMini1 operation, body joints are normalized from their recorded
+range to `[-100,100]`, grippers to `[0,100]`, and wheels/lift bypass position
+normalization. A successful `is_calibrated` check only proves that cached values
+match motor registers. It does **not** prove the correct physical joint was
+assigned, the sign matches ROS, an endpoint is safe, the URDF zero is correct,
+or the robot reproduces a commanded pose.
+
+Preserve the generated JSON as raw LeRobot calibration evidence. Store the
+canonical ROS/URDF mapping, safe limits, wheel and lift scale, and validation
+results in the versioned robot calibration artifact described later in this
+document.
+
+### Preconditions before running calibration on hardware
+
+The inspected AlohaMini1 implementation needs these issues resolved or
+explicitly controlled before its generic calibration command is treated as a
+safe runbook:
+
+| Current behavior | Required disposition |
+| --- | --- |
+| `lerobot-calibrate` does not import/register the `alohamini` robot module | Register it in the CLI before relying on `--robot.type=alohamini`, or use a reviewed AlohaMini1-specific calibration entry point |
+| `LeKiwi.connect(calibrate=False)` still calls `lift.home()` | Add an option that suppresses lift motion during arm calibration; default the calibration tool to no automatic lift motion |
+| Lift homing does not execute `home_backoff_deg`, stops by disabling torque, and sets zero at the detected hard stop | Explicitly command zero velocity, back off to a repeatable unloaded reference, then define zero; validate torque enable/disable behavior |
+| `LeKiwi.is_calibrated` checks only the left bus | Require matching calibration and readback from both buses |
+| A combined calibration dictionary is initially passed to each bus | Split entries by bus before checking/writing them and detect missing or extra names |
+| Every generated `drive_mode` is `0` | Perform and save a positive-direction test for all 12 arm/gripper joints and all three wheels |
+| Both wrist-roll ranges are forced to `0..4095` without an observed sweep | Confirm true continuous travel and cable clearance; otherwise record measured limits and add margin |
+| Wheel and lift entries receive placeholder `0..4095` position ranges | Label these fields not-applicable; calibrate wheel velocity and lift homing/scale separately |
+| Observed arm endpoints are written directly as motor limits | Preserve observed hard endpoints, but derive conservative operational limits inside them |
+| Wheel conversion assumes 4096 speed steps per output revolution per second and current conversion assumes `6.5 mA/count` | Verify both against the installed firmware with timed-revolution and ammeter tests |
+
+Until these P0 items are addressed and reviewed on the target robot, do not run
+the following intended command on hardware:
+
+```bash
+lerobot-calibrate \
+  --robot.type=alohamini \
+  --robot.robot_model=alohamini1 \
+  --robot.left_port=/dev/am_arm_follower_left \
+  --robot.right_port=/dev/am_arm_follower_right \
+  --robot.id=ALOHAMINI1_SERIAL
+```
+
+Once the entry point and motion preconditions are fixed, this command should
+calibrate only the two arms and grippers. Wheel and lift calibration remain the
+separate stages below.
+
+### Stage 0: identity, backup, and safe test setup
+
+1. Put the robot on a stable support with all three wheels clear of the floor
+   and both arms supported against falling when torque is disabled.
+2. Provide a reachable physical E-stop or power disconnect. Start with low
+   command/current limits and no payload.
+3. Photograph labels and wiring. Record robot serial, hardware revision, exact
+   motor SKUs, bus/adapter serials, firmware, battery/supply voltage, and code
+   commits.
+4. Back up the existing LeRobot JSON and read all calibration/control registers
+   before writing anything. Never reuse another robot's file merely because its
+   motor IDs match.
+5. Verify that the left and right persistent device paths resolve to the
+   expected adapters after reboot.
+
+### Stage 1: passive bus and register audit
+
+With torque disabled, scan each bus independently. The left bus should expose
+IDs `1..6, 8..11`; the right bus should expose `1..6`. Investigate any missing,
+duplicate, or extra ID before motion.
+
+For every motor, save at least ID, model number, firmware version, baud rate,
+return delay, operating mode, phase/drive direction, present position, homing
+offset, min/max position limits, PID coefficients, acceleration, protection
+current/time, voltage limits, temperature limit, present voltage, current, and
+temperature. Power-cycle and confirm that persistent registers read back.
+
+### Stage 2: LeRobot range calibration for arms and grippers
+
+1. Mechanically place one arm near the middle of every joint's usable range.
+   This is the LeRobot half-turn reference; do not call it URDF `q=0` yet.
+2. With arm torque disabled, record the raw midpoint positions and write the
+   half-turn homing offsets.
+3. Sweep one joint at a time slowly through its physical usable range. Keep the
+   other joints supported. Include the gripper's fully open and fully closed
+   positions.
+4. Repeat for the other arm. Do not assume mirrored joints have equal signs,
+   offsets, or ranges.
+5. Sweep wrist roll instead of forcing full scale unless the assembly and cable
+   routing have been verified for continuous rotation.
+6. Save the JSON, read the values back from both buses, power-cycle, and repeat
+   the readback. Archive a checksum with the robot serial and date.
+7. Repeat the range sweep once. Large changes indicate an incomplete first
+   sweep, a slipping horn, encoder wrap handling, or an ambiguous hard stop.
+
+Do not repeatedly push powered joints into mechanical stops. The range sweep is
+manual/back-driven; operational limits should include measured margins from
+collisions, cable strain, and servo stop uncertainty.
+
+### Stage 3: map LeRobot values to URDF joints
+
+For each of the ten arm joints, place the mechanism in a fixture or surveyed
+pose that represents its URDF `q=0`. Record raw ticks, LeRobot normalized value,
+joint angle, approach direction, and measurement uncertainty. Then collect at
+least two additional known angles and repeat while approaching from both sides.
+
+For a body joint represented by LeRobot value `p` in `[-100,100]`, an initial
+mapping is:
+
+```text
+q_ros(p) = q_at_minus_100
+           + ((p + 100) / 200) * (q_at_plus_100 - q_at_minus_100)
+```
+
+Fit and store joint-specific coefficients; do not assume `p=0` equals URDF
+zero. Use a lookup table or separate approach-direction correction if residuals
+show meaningful backlash. Verify the sign by commanding a very small positive
+ROS increment and observing positive motion about the URDF axis.
+
+Convert measured collision/mechanical endpoints to radians, then create soft
+command limits inside them. Validate at five or more held-out arm poses with an
+external tool-frame measurement. This is the point where LeRobot normalized
+positions become portable ROS/simulator joint states.
+
+### Stage 4: gripper calibration
+
+The interactive sweep supplies raw endpoints but not grasp geometry. For both
+grippers:
+
+1. identify which normalized endpoint is open and which is closed;
+2. measure jaw aperture at `0, 10, ..., 100%` using gauges;
+3. repeat each point from both directions to estimate backlash;
+4. measure contact current and jaw force for representative object widths;
+5. define separate unloaded-closed, object-contact, stall, jam, and timeout
+   outcomes;
+6. map the result to the simulator convention `0 rad` open and `-1.57 rad`
+   closed without assuming that percentage is linear in aperture.
+
+### Stage 5: wheel calibration
+
+LeKiwi correctly skips wheel position-range calibration because the wheels use
+velocity mode. AlohaMini1 still requires a wheel calibration record:
+
+1. With the chassis raised, command one wheel at a time at small positive and
+   negative raw speeds. Confirm motor name, physical location, and sign.
+2. Mark each wheel and measure revolutions over a timed interval at multiple raw
+   commands in both directions. Fit per-wheel raw-to-rad/s scale, deadband,
+   asymmetry, saturation, rise time, and coast-down.
+3. Repeat under normal robot load on a low-slip floor to obtain effective
+   rolling radius; do not derive it only from the nominal wheel diameter.
+4. Survey wheel centres and rolling azimuths in `base_link`. Resolve the current
+   `0.125 m` hardware versus `0.17878 m` Gazebo radius discrepancy by definition
+   and measurement.
+5. Run isolated forward, lateral, and yaw commands at low speed. Confirm `+X`
+   chest-forward, `+Y` left, and positive yaw counter-clockwise.
+6. Fit geometry using straight/lateral/yaw data, then characterize floor- and
+   payload-dependent slip with diagonal and closed-loop paths.
+
+Wheel odometry calibration must use `Present_Velocity` and an external pose
+reference. The commanded raw speed is not a measured wheel state.
+
+### Stage 6: lift calibration
+
+Do this only after homing has an explicit torque-enable sequence, zero-velocity
+stop, physical backoff, timeout, and abort path.
+
+1. Home at a conservative speed/current threshold, back away from the hard stop,
+   and define that safe backed-off position as `0 m`.
+2. Repeat at least 20 times and record zero repeatability, peak current, homing
+   time, false-stop rate, and final backed-off position.
+3. Verify the assumed `84 mm/rev` by measuring carriage displacement over
+   several motor revolutions in both directions. Fit `mm/tick` and backlash.
+4. Confirm that positive height moves upward and measure the usable upper limit;
+   set soft limits inside both physical endpoints.
+5. Characterize velocity, holding error/current, overshoot, and settling at
+   several heights with no payload and representative payloads.
+6. Expose metres at the ROS/simulator boundary even though the current LeRobot
+   action and observation use millimetres.
+
+### Stage 7: actuator, system, and simulator identification
+
+After signs, zeros, scales, and safe limits pass validation, log synchronized
+command, raw position, normalized position, velocity, current, voltage,
+temperature, and external pose while running low-risk steps and trajectories.
+Fit the black-box response of each actuator family at the actual supply voltage.
+Then continue with camera, mass/inertia, contact, timing, and noise calibration
+in the subsystem sections below. Do not tune Gazebo PID or contact coefficients
+until the portable hardware mappings are frozen.
+
+Capture the following current code settings with each test. They are starting
+values to identify, not calibrated constants:
+
+| Setting | Current value |
+| --- | --- |
+| Arm/gripper Feetech PID | P `16`, I `0`, D `32` on both buses |
+| Feetech bus setup | Return delay `0`; acceleration `254`; protocol-0 maximum acceleration `254` |
+| Wheel raw command ceiling | `3000`, with common scaling when any wheel exceeds it |
+| Lift height loop | `kp_vel=300 raw/mm`, `v_max=1300`, `on_target=1 mm` |
+| Lift homing detector | Raw speed `1300`; nominal current threshold `300 mA`; two consecutive 50 ms stop detections |
+| Runtime software over-current detector | `2000 mA` for 20 consecutive observation reads |
+| Host loop/watchdog | Nominal `30 Hz`; `1500 ms` command watchdog |
+| Relative arm action clamp | Disabled by default (`max_relative_target=None`) |
+
+Measure the actual loop frequency before converting consecutive-read counts to
+time. Verify protections independently at conservative loads; the presence of a
+software threshold is not evidence that the E-stop, firmware protection, or
+power path is safe.
 
 ## Base and omni wheels
 
@@ -431,7 +706,13 @@ robot_serial: ROBOT_SERIAL
 hardware_revision: REVISION
 created_at: ISO-8601
 source_commit: GIT_COMMIT
+lerobot_commit: LEROBOT_GIT_COMMIT
 units: {length: m, angle: rad, time: s, mass: kg}
+
+sources:
+  lerobot_calibration_json: PATH_OR_CONTENT_HASH
+  raw_measurements: DIRECTORY_OR_DATASET_ID
+  procedure_version: null
 
 conventions:
   base_forward: +X
@@ -440,6 +721,26 @@ conventions:
   lift_zero: safe_backoff_from_bottom
   gripper_zero: fully_open
 
+motor_inventory:
+  arm_left_shoulder_pan:
+    bus: left
+    id: 1
+    generic_model: sts3215
+    exact_sku: null
+    firmware: null
+    rated_voltage_v: null
+    operating_mode: position
+  # Expand for all motors on both buses.
+
+lerobot_motor_calibration:
+  arm_left_shoulder_pan:
+    drive_mode: null
+    homing_offset_raw: null
+    range_min_raw: null
+    range_max_raw: null
+    norm_mode: range_m100_100
+    register_readback_passed: false
+
 base:
   mass_kg: null
   com_xyz_m: [null, null, null]
@@ -447,12 +748,18 @@ base:
   wheels:
     - {joint: wheel1_joint, motor_id: null, direction: null,
        centre_xyz_m: [null, null, null], axle_xyz: [null, null, null],
-       radius_m: null, encoder_ticks_per_rev: null, gear_ratio: null}
+       radius_m: null, encoder_ticks_per_rev: null, gear_ratio: null,
+       raw_speed_per_rad_s: null, deadband_raw: null}
   odometry_covariance: null
 
 lift:
+  motor_name: lift_axis
+  bus: left
+  motor_id: 11
+  homing_method_version: null
   zero_ticks: null
   home_backoff_m: null
+  home_repeatability_m: null
   metres_per_tick: null
   direction: null
   lower_m: null
@@ -461,10 +768,16 @@ lift:
 
 arms:
   left_joint1:
+    lerobot_motor_name: arm_left_shoulder_pan
+    bus: left
     motor_id: null
     direction: null
     ticks_at_zero: null
     radians_per_tick: null
+    q_at_minus_100_rad: null
+    q_at_plus_100_rad: null
+    hard_lower_rad: null
+    hard_upper_rad: null
     lower_rad: null
     upper_rad: null
     max_velocity_rad_s: null
@@ -476,6 +789,7 @@ grippers:
     q_at_100_percent_rad: null
     open_gap_m: null
     closed_gap_m: null
+    aperture_curve_percent_m: []
     max_force_n: null
 
 cameras:
@@ -505,26 +819,23 @@ Expand repeated entries for all wheels, arm joints, grippers, and cameras. Store
 raw measurements and fitting scripts beside the derived YAML so every value is
 auditable.
 
-## Recommended calibration sequence
+## Project-level calibration sequence
 
-1. Photograph and inventory the exact hardware revision, motor IDs, gearboxes,
-   cameras, wheels, firmware, and wiring.
-2. Establish safe current/speed limits, physical E-stop, supports, and command
-   watchdog before powered tests.
-3. Freeze base, joint, lift, gripper, tool, and optical frame conventions.
-4. Measure static geometry, masses, joint axes, hard stops, signs, and encoder
-   scales with motors unloaded or moving slowly.
-5. Implement and repeat lift homing/backoff; define the bottom-relative zero.
-6. Calibrate arm zeros and limits, then validate forward kinematics at many
-   independent poses.
-7. Calibrate gripper endpoints, aperture curve, force/current, and contact.
-8. Calibrate camera intrinsics, then base/lift/tool extrinsics and timing.
-9. Fit base kinematics and odometry on a low-slip reference floor; repeat on
-   operating floors to characterize slip.
-10. Identify actuator response, backlash, damping, contact, delays, and noise.
-11. Validate with held-out trajectories, poses, payloads, floors, and lighting.
-12. Freeze the calibration ID and record it in ROS bags, LeRobot episodes,
-    simulator runs, maps, and policy metadata.
+Use the detailed motor stages above and advance only when the previous gate is
+recorded as passed:
+
+| Gate | Required result |
+| --- | --- |
+| G0 — safe setup | Robot identity, backups, E-stop, supports, conservative limits, and persistent ports verified |
+| G1 — buses | Expected IDs/models on both buses; register snapshot and power-cycle readback archived |
+| G2 — LeRobot arms | Both arm/gripper JSON entries measured, not copied; both buses pass readback |
+| G3 — canonical joints | Every joint has verified URDF zero/sign/scale plus distinct hard and soft limits |
+| G4 — grippers | Endpoints, aperture curve, backlash, force/current, and contact/fault behavior measured |
+| G5 — wheels | Name/sign, raw velocity scale, deadband, effective radius, wheel pose, and body-frame directions verified |
+| G6 — lift | Safe homing/backoff, repeatable zero, `mm/tick`, direction, travel, and payload response verified |
+| G7 — geometry/sensors | Arm/tool kinematics and all camera intrinsics/extrinsics/timestamps pass held-out tests |
+| G8 — dynamics/contact | Mass/inertia, actuator response, floor slip, grasp contact, delays, and noise fitted from separate trials |
+| G9 — release | Held-out validation passes; artifact is immutable and its ID is recorded in ROS bags, LeRobot episodes, simulator runs, maps, and policy metadata |
 
 Change one parameter class at a time and keep held-out validation runs. Tuning
 several coupled values against one trajectory can produce a simulator that fits
@@ -556,7 +867,8 @@ calibration result.
 Before using the model for hardware control, odometry, or learned-policy
 transfer, complete at least:
 
-- bus/motor inventory and sign tests;
+- exact motor/SKU inventory, both-bus register readback, and sign tests;
+- a robot-specific LeRobot JSON plus its separate canonical URDF mapping;
 - measured wheel positions, angles, radii, encoder scaling, and odometry trials;
 - repeatable lift homing/backoff, scale, and limits;
 - all arm zero offsets, signs, encoder-to-radian scales, and safe limits;
